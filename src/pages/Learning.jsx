@@ -39,7 +39,9 @@ export default function Learning() {
   const navigate = useNavigate();
 
   // Find the selected topic across biology modules
-  const currentTopic = TOPICS.biology.find(t => t.id === topicId) || TOPICS.biology[0];
+  const allTopics = Object.values(TOPICS).flat();
+  const currentTopic = allTopics.find(t => t.id === topicId) || allTopics[0];
+  const parentSubjectId = Object.keys(TOPICS).find(k => TOPICS[k].some(t => t.id === currentTopic.id)) || "biology";
 
   // State for interactive modals
   const [modalOpen, setModalOpen] = useState(false);
@@ -51,7 +53,13 @@ export default function Learning() {
   // Simulated rotation angle for topics without active 3D models yet
   const [rotationAngle, setRotationAngle] = useState(45);
 
+  const handleAskAI = (prompt) => {
+    const q = prompt || currentTopic.aiPromptSuggestion || `Explain the core concepts of ${currentTopic.title}`;
+    navigate(`/chat?q=${encodeURIComponent(q)}&subject=${encodeURIComponent(parentSubjectId)}`);
+  };
+
   const handleActionClick = (actionType) => {
+    if (actionType === "ai") { handleAskAI(); return; }
     setActiveAction(actionType);
     setModalOpen(true);
   };
@@ -71,9 +79,9 @@ export default function Learning() {
       <div className="container">
         {/* Navigation Breadcrumb */}
         <div className="learning-breadcrumb">
-          <Link to="/topics/biology" className="back-link">
+          <Link to={`/topics/${parentSubjectId}`} className="back-link">
             <ArrowLeft size={16} />
-            <span>Back to Biology Topics</span>
+            <span>Back to Topics</span>
           </Link>
           <span className="breadcrumb-separator">/</span>
           <span className="breadcrumb-current">{currentTopic.title}</span>
@@ -207,7 +215,7 @@ export default function Learning() {
 
               <button 
                 className="action-btn btn-ask-ai" 
-                onClick={() => handleActionClick('ai')}
+                onClick={() => handleAskAI(currentTopic.aiPromptSuggestion)}
                 title="Ask AI questions about this topic"
               >
                 <Bot size={18} />

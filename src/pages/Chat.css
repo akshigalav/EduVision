@@ -446,3 +446,88 @@
   .example-chip { font-size: 0.75rem; padding: 0.35rem 0.75rem; }
   .msg-bubble { font-size: 0.85rem; padding: 0.7rem 0.9rem; }
 }
+
+
+/* ── Subject Selection Filter Tabs ── */
+.chat-subject-tabs {
+  display: flex;
+  gap: 0.5rem;
+  overflow-x: auto;
+  padding: 0.75rem 0 0.25rem;
+  scrollbar-width: none;
+}
+
+.chat-subject-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.subject-tab-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.4rem 0.85rem;
+  border-radius: var(--radius-full);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all var(--transition-normal);
+}
+
+.subject-tab-pill:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-primary);
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+.subject-tab-pill.active {
+  background: rgba(99, 102, 241, 0.2);
+  border-color: var(--primary);
+  color: #a5b4fc;
+  box-shadow: 0 0 12px rgba(99, 102, 241, 0.3);
+  font-weight: 600;
+}
+
+.tab-pill-icon {
+  display: flex;
+  align-items: center;
+}
+
+/* ── Empty State Subject Pills ── */
+.chat-empty-subject-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  justify-content: center;
+  margin-top: 0.5rem;
+}
+
+.empty-sub-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.35rem 0.75rem;
+  border-radius: var(--radius-full);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-secondary);
+  font-size: 0.78rem;
+  cursor: pointer;
+  transition: all var(--transition-normal);
+}
+
+.empty-sub-pill:hover {
+  background: rgba(99, 102, 241, 0.15);
+  border-color: var(--primary);
+  color: #a5b4fc;
+  transform: translateY(-2px);
+}
+
+.empty-sub-pill.active {
+  background: rgba(99, 102, 241, 0.25);
+  border-color: var(--primary);
+  color: #ffffff;
+}

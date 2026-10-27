@@ -1,19 +1,88 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { Bot, Send, Trash2, X, BookOpen, Lightbulb, FlaskConical, Globe, Calculator } from 'lucide-react';
+import { useSearchParams } from 'react-router-dom';
+import { 
+  Bot, 
+  Send, 
+  Trash2, 
+  X, 
+  BookOpen, 
+  Lightbulb, 
+  FlaskConical, 
+  Globe, 
+  Calculator,
+  Dna,
+  Atom,
+  Sigma,
+  Cpu,
+  Sparkles,
+  Zap,
+  Sun,
+  Droplet,
+  Compass,
+  Flame,
+  Triangle,
+  Layers,
+  TrendingUp,
+  GitBranch,
+  BarChart2,
+  Brain,
+  Leaf
+} from 'lucide-react';
 import './Chat.css';
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
 const API_URL = 'http://localhost:3001/api/chat';
 
-const EXAMPLE_QUESTIONS = [
-  { icon: <Calculator size={13} />, text: 'How does the Pythagorean theorem work?' },
-  { icon: <FlaskConical size={13} />, text: 'What is photosynthesis?' },
-  { icon: <Globe size={13} />, text: 'Why does the Earth have seasons?' },
-  { icon: <BookOpen size={13} />, text: 'What caused World War I?' },
-  { icon: <Lightbulb size={13} />, text: 'How do black holes form?' },
-  { icon: <FlaskConical size={13} />, text: "Explain Newton's laws of motion" },
+export const SUBJECT_TABS = [
+  { id: 'all', label: 'All Subjects', icon: <Sparkles size={14} />, color: '#6366f1' },
+  { id: 'biology', label: 'Biology', icon: <Dna size={14} />, color: '#10b981' },
+  { id: 'physics', label: 'Physics', icon: <Atom size={14} />, color: '#6366f1' },
+  { id: 'chemistry', label: 'Chemistry', icon: <FlaskConical size={14} />, color: '#06b6d4' },
+  { id: 'mathematics', label: 'Mathematics', icon: <Sigma size={14} />, color: '#f59e0b' },
+  { id: 'computer-science', label: 'Computer Science', icon: <Cpu size={14} />, color: '#818cf8' },
 ];
+
+export const SUBJECT_QUESTIONS = {
+  all: [
+    { icon: <Calculator size={13} />, text: 'How does the Pythagorean theorem work?' },
+    { icon: <FlaskConical size={13} />, text: 'What is photosynthesis and cellular respiration?' },
+    { icon: <Globe size={13} />, text: 'Why does the Earth have seasons and orbital tilt?' },
+    { icon: <Atom size={13} />, text: "Explain Newton's three laws of motion with examples" },
+    { icon: <Cpu size={13} />, text: 'How do binary search trees achieve O(log n) efficiency?' },
+    { icon: <Dna size={13} />, text: 'How does the human heart coordinate electrical impulses?' },
+  ],
+  biology: [
+    { icon: <Dna size={13} />, text: 'Explain how the 4 chambers of the human heart prevent blood mixing' },
+    { icon: <Brain size={13} />, text: 'How do neurotransmitters cross the synaptic cleft between neurons?' },
+    { icon: <Leaf size={13} />, text: 'Compare chloroplasts with mitochondria in cellular energy metabolism' },
+    { icon: <Dna size={13} />, text: 'What is the role of DNA helicase and polymerase in replication?' },
+  ],
+  physics: [
+    { icon: <Atom size={13} />, text: "Explain Kepler's 3 laws of planetary motion and elliptical orbits" },
+    { icon: <Zap size={13} />, text: "How does Faraday's law of induction convert motion into electricity?" },
+    { icon: <Sun size={13} />, text: "Why does light refract and bend according to Snell's law?" },
+    { icon: <Atom size={13} />, text: 'How does total internal reflection enable fiber optic communication?' },
+  ],
+  chemistry: [
+    { icon: <Droplet size={13} />, text: 'Why does ice float on water, and how does hydrogen bonding explain this?' },
+    { icon: <Compass size={13} />, text: 'Explain electronegativity trends across the periodic table' },
+    { icon: <FlaskConical size={13} />, text: 'How do catalysts lower activation energy without being consumed?' },
+    { icon: <Flame size={13} />, text: "How does Le Chatelier's Principle predict equilibrium shifts under stress?" },
+  ],
+  mathematics: [
+    { icon: <Triangle size={13} />, text: 'How does the unit circle connect right-triangle trigonometry to periodic sine waves?' },
+    { icon: <Layers size={13} />, text: 'Explain the difference between vector dot product and cross product in 3D' },
+    { icon: <TrendingUp size={13} />, text: 'What is the intuitive meaning of a derivative as instantaneous rate of change?' },
+    { icon: <Calculator size={13} />, text: 'How does the Fundamental Theorem of Calculus unify derivatives and integrals?' },
+  ],
+  'computer-science': [
+    { icon: <GitBranch size={13} />, text: 'Why does an inorder traversal of a Binary Search Tree produce sorted values?' },
+    { icon: <Cpu size={13} />, text: 'Explain the CPU fetch-decode-execute instruction cycle and registers' },
+    { icon: <BarChart2 size={13} />, text: 'Compare Quicksort and Mergesort in time complexity, space complexity, and stability' },
+    { icon: <Cpu size={13} />, text: 'What is instruction pipelining and how do branch prediction hazards affect throughput?' },
+  ],
+};
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -21,10 +90,6 @@ function formatTime(date) {
   return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 }
 
-/**
- * Minimal markdown renderer: bold, inline code, lists, paragraphs.
- * Returns an array of React elements.
- */
 function renderMarkdown(text) {
   const lines = text.split('\n');
   const elements = [];
@@ -34,7 +99,6 @@ function renderMarkdown(text) {
   while (i < lines.length) {
     const line = lines[i];
 
-    // Blank line
     if (!line.trim()) { i++; continue; }
 
     // Unordered list
@@ -75,7 +139,6 @@ function renderMarkdown(text) {
 }
 
 function inlineMarkdown(text) {
-  // Split on **bold** and `code`
   const parts = text.split(/(\*\*[^*]+\*\*|`[^`]+`)/g);
   return parts.map((part, idx) => {
     if (part.startsWith('**') && part.endsWith('**')) {
@@ -91,6 +154,16 @@ function inlineMarkdown(text) {
 // ── Chat Component ────────────────────────────────────────────────────────────
 
 export default function Chat() {
+  const [searchParams] = useSearchParams();
+  const urlSubjectParam = searchParams.get('subject')?.toLowerCase() || 'all';
+  const initialQuery = searchParams.get('q') || searchParams.get('prompt') || '';
+
+  // Match subject tab ID from URL param
+  const matchedSubject = SUBJECT_TABS.find(t => 
+    t.id === urlSubjectParam || t.label.toLowerCase() === urlSubjectParam
+  )?.id || 'all';
+
+  const [activeSubject, setActiveSubject] = useState(matchedSubject);
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
@@ -98,6 +171,7 @@ export default function Chat() {
 
   const messagesEndRef = useRef(null);
   const textareaRef = useRef(null);
+  const initialQuerySentRef = useRef(false);
 
   // Auto-scroll to bottom on new messages
   useEffect(() => {
@@ -114,9 +188,11 @@ export default function Chat() {
     }
   };
 
-  const sendMessage = useCallback(async (text) => {
+  const sendMessage = useCallback(async (text, overrideSubject) => {
     const trimmed = text.trim();
     if (!trimmed || loading) return;
+
+    const currentSub = overrideSubject || activeSubject;
 
     // Append user message
     const userMsg = { role: 'user', content: trimmed, time: new Date() };
@@ -125,19 +201,21 @@ export default function Chat() {
     setError(null);
     setLoading(true);
 
-    // Reset textarea height
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto';
     }
 
-    // Build history (exclude the message we just added — server adds it to chat)
     const history = messages.map(m => ({ role: m.role, content: m.content }));
 
     try {
       const res = await fetch(API_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: trimmed, history }),
+        body: JSON.stringify({ 
+          message: trimmed, 
+          history, 
+          subject: currentSub !== 'all' ? currentSub : undefined 
+        }),
       });
 
       const data = await res.json();
@@ -157,7 +235,15 @@ export default function Chat() {
     } finally {
       setLoading(false);
     }
-  }, [loading, messages]);
+  }, [loading, messages, activeSubject]);
+
+  // Automatically submit initial query if present in URL
+  useEffect(() => {
+    if (initialQuery && !initialQuerySentRef.current) {
+      initialQuerySentRef.current = true;
+      sendMessage(initialQuery, matchedSubject);
+    }
+  }, [initialQuery, matchedSubject, sendMessage]);
 
   const handleKeyDown = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -177,6 +263,9 @@ export default function Chat() {
 
   const canSend = input.trim().length > 0 && !loading;
 
+  const currentQuestions = SUBJECT_QUESTIONS[activeSubject] || SUBJECT_QUESTIONS.all;
+  const activeTabMeta = SUBJECT_TABS.find(t => t.id === activeSubject) || SUBJECT_TABS[0];
+
   return (
     <div className="chat-page">
       {/* ── Header ── */}
@@ -186,10 +275,13 @@ export default function Chat() {
             <Bot size={22} color="white" />
           </div>
           <div className="chat-header-info">
-            <h1 className="gradient-text">EduBot AI Tutor</h1>
+            <h1 className="gradient-text">EduBot AI Smart Tutor</h1>
             <div className="chat-status">
               <span className="status-dot" />
-              <span>Online · Powered by Gemini 2.0</span>
+              <span>
+                Online · Powered by Gemini AI
+                {activeSubject !== 'all' ? ` (${activeTabMeta.label} Specialist)` : ' (All STEM Subjects)'}
+              </span>
             </div>
           </div>
           <div className="chat-header-actions">
@@ -206,14 +298,36 @@ export default function Chat() {
             )}
           </div>
         </div>
+
+        {/* ── Subject Selection Filter Tabs ── */}
+        <div className="chat-subject-tabs" role="tablist" aria-label="Select subject specialization">
+          {SUBJECT_TABS.map((tab) => {
+            const isSelected = activeSubject === tab.id;
+            return (
+              <button
+                key={tab.id}
+                role="tab"
+                aria-selected={isSelected}
+                className={`subject-tab-pill ${isSelected ? 'active' : ''}`}
+                onClick={() => setActiveSubject(tab.id)}
+                id={`subject-tab-${tab.id}`}
+              >
+                <span className="tab-pill-icon">{tab.icon}</span>
+                <span>{tab.label}</span>
+              </button>
+            );
+          })}
+        </div>
       </div>
 
-      {/* ── Example Questions ── */}
+      {/* ── Example Questions for Active Subject ── */}
       {messages.length === 0 && (
         <div className="example-questions">
-          <div className="example-questions-label">Try asking</div>
+          <div className="example-questions-label">
+            Suggested for {activeTabMeta.label}:
+          </div>
           <div className="example-chips" role="list">
-            {EXAMPLE_QUESTIONS.map((q, idx) => (
+            {currentQuestions.map((q, idx) => (
               <button
                 key={idx}
                 className="example-chip"
@@ -223,7 +337,7 @@ export default function Chat() {
                 id={`example-chip-${idx}`}
               >
                 {q.icon}
-                {q.text}
+                <span>{q.text}</span>
               </button>
             ))}
           </div>
@@ -235,10 +349,23 @@ export default function Chat() {
         {messages.length === 0 && !loading && (
           <div className="chat-empty">
             <div className="chat-empty-icon">
-              <Bot size={30} color="var(--primary-light)" />
+              <Bot size={34} color="var(--primary-light)" />
             </div>
-            <h3>Ask me anything educational!</h3>
-            <p>I can help with Science, Maths, History, Geography, Literature, and much more.</p>
+            <h3>Ask EduVision AI Tutor Anything!</h3>
+            <p>
+              I provide instant, interactive explanations across <strong>Biology</strong>, <strong>Physics</strong>, <strong>Chemistry</strong>, <strong>Mathematics</strong>, and <strong>Computer Science</strong>.
+            </p>
+            <div className="chat-empty-subject-pills">
+              {SUBJECT_TABS.filter(t => t.id !== 'all').map(t => (
+                <span 
+                  key={t.id} 
+                  className={`empty-sub-pill ${activeSubject === t.id ? 'active' : ''}`}
+                  onClick={() => setActiveSubject(t.id)}
+                >
+                  {t.icon} {t.label}
+                </span>
+              ))}
+            </div>
           </div>
         )}
 
@@ -308,7 +435,11 @@ export default function Chat() {
             value={input}
             onChange={handleInputChange}
             onKeyDown={handleKeyDown}
-            placeholder="Ask a question about any subject…"
+            placeholder={
+              activeSubject !== 'all' 
+                ? `Ask a question about ${activeTabMeta.label}…`
+                : 'Ask a question about any STEM subject…'
+            }
             rows={1}
             disabled={loading}
             aria-label="Chat input"
@@ -324,7 +455,9 @@ export default function Chat() {
             <Send size={16} />
           </button>
         </div>
-        <p className="input-hint">Press Enter to send · Shift+Enter for new line</p>
+        <p className="input-hint">
+          Press Enter to send · Shift+Enter for new line · Specialized for {activeTabMeta.label}
+        </p>
       </div>
     </div>
   );

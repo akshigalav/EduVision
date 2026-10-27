@@ -10,16 +10,28 @@ import {
   Clock, 
   Layers, 
   Box, 
-  Sparkles,
-  HelpCircle,
-  Activity
+  Sparkles, 
+  HelpCircle, 
+  Activity,
+  Bot,
+  Orbit,
+  Zap,
+  Sun,
+  Droplet,
+  Compass,
+  Flame,
+  Triangle,
+  TrendingUp,
+  GitBranch,
+  Cpu,
+  BarChart2
 } from 'lucide-react';
 import { TOPICS, SUBJECTS } from '../data/learningData';
 import './Topics.css';
 
 /**
  * Topics Page Component
- * Displays available interactive modules for a chosen subject (Biology focus for Phase 1).
+ * Displays available interactive modules for a chosen subject with direct AI Tutor integration.
  */
 export default function Topics() {
   const { subjectId = 'biology' } = useParams();
@@ -37,8 +49,30 @@ export default function Topics() {
         return <Brain size={28} className="topic-icon-elem brain" />;
       case 'Leaf':
         return <Leaf size={28} className="topic-icon-elem leaf" />;
+      case 'Orbit':
+        return <Orbit size={28} className="topic-icon-elem" style={{ color: '#818cf8' }} />;
+      case 'Zap':
+        return <Zap size={28} className="topic-icon-elem" style={{ color: '#f59e0b' }} />;
+      case 'Sun':
+        return <Sun size={28} className="topic-icon-elem" style={{ color: '#fbbf24' }} />;
+      case 'Droplet':
+        return <Droplet size={28} className="topic-icon-elem" style={{ color: '#38bdf8' }} />;
+      case 'Compass':
+        return <Compass size={28} className="topic-icon-elem" style={{ color: '#06b6d4' }} />;
+      case 'Flame':
+        return <Flame size={28} className="topic-icon-elem" style={{ color: '#f43f5e' }} />;
+      case 'Triangle':
+        return <Triangle size={28} className="topic-icon-elem" style={{ color: '#f59e0b' }} />;
+      case 'TrendingUp':
+        return <TrendingUp size={28} className="topic-icon-elem" style={{ color: '#10b981' }} />;
+      case 'GitBranch':
+        return <GitBranch size={28} className="topic-icon-elem" style={{ color: '#a855f7' }} />;
+      case 'Cpu':
+        return <Cpu size={28} className="topic-icon-elem" style={{ color: '#6366f1' }} />;
+      case 'BarChart2':
+        return <BarChart2 size={28} className="topic-icon-elem" style={{ color: '#3b82f6' }} />;
       default:
-        return <Dna size={28} className="topic-icon-elem" />;
+        return <Layers size={28} className="topic-icon-elem" />;
     }
   };
 
@@ -57,18 +91,30 @@ export default function Topics() {
 
         {/* Header */}
         <div className="topics-header">
-          <div className="topics-subject-badge">
-            <Dna size={16} />
-            <span>Interactive Laboratory</span>
+          <div className="topics-header-content">
+            <div className="topics-subject-badge">
+              <Sparkles size={16} />
+              <span>Interactive {currentSubject.name} Laboratory</span>
+            </div>
+
+            <h1 className="topics-page-title">
+              {currentSubject.name} <span className="gradient-text">Learning Modules</span>
+            </h1>
+
+            <p className="topics-page-desc">
+              Select an educational topic below to inspect spatial concepts or start an interactive tutoring session with the EduBot AI Tutor.
+            </p>
           </div>
 
-          <h1 className="topics-page-title">
-            {currentSubject.name} <span className="gradient-text">3D Learning Modules</span>
-          </h1>
-
-          <p className="topics-page-desc">
-            Select an anatomical or cellular structure below to launch the spatial viewer, inspect cross-sections, and test your knowledge.
-          </p>
+          <div className="topics-header-action">
+            <Link 
+              to={`/chat?subject=${encodeURIComponent(currentSubject.name)}`}
+              className="btn btn-secondary topics-ai-tutor-btn"
+            >
+              <Bot size={18} />
+              <span>Ask {currentSubject.name} AI Tutor</span>
+            </Link>
+          </div>
         </div>
 
         {/* Topics Grid */}
@@ -98,7 +144,7 @@ export default function Topics() {
               </div>
 
               <div className="topic-card-highlights">
-                <span className="highlights-label">Key Anatomical Focus:</span>
+                <span className="highlights-label">Key Core Concepts:</span>
                 <div className="highlights-pills">
                   {topic.keyPoints.slice(0, 3).map((pt, idx) => (
                     <span key={idx} className="point-pill">{pt.title}</span>
@@ -111,27 +157,38 @@ export default function Topics() {
                   <span title="3D Model Ready">3D</span>
                   <span title="AR Compatible">AR</span>
                   <span title="AI Tutor Ready">AI</span>
-                  <span title="5-Question Quiz">Quiz</span>
+                  <span title="Quiz Ready">Quiz</span>
                 </div>
 
-                <Link to={`/learn/${topic.id}`} className="btn btn-primary topic-launch-btn">
-                  <span>Enter 3D Lab</span>
-                  <ArrowRight size={16} />
-                </Link>
+                <div className="topic-action-buttons">
+                  <Link 
+                    to={`/chat?subject=${encodeURIComponent(currentSubject.name)}&q=${encodeURIComponent(topic.aiPromptSuggestion)}`}
+                    className="btn btn-secondary topic-ai-chip-btn"
+                    title={`Ask EduBot: ${topic.aiPromptSuggestion}`}
+                  >
+                    <Bot size={15} />
+                    <span>Ask AI</span>
+                  </Link>
+
+                  <Link to={`/learn/${topic.id}`} className="btn btn-primary topic-launch-btn">
+                    <span>Explore</span>
+                    <ArrowRight size={16} />
+                  </Link>
+                </div>
               </div>
             </div>
           ))}
         </div>
 
-        {/* Phase 1 Explanatory Note */}
+        {/* Phase Guidance Note */}
         <div className="topics-roadmap-note glass-card">
           <div className="roadmap-note-icon">
-            <Sparkles size={20} />
+            <Bot size={24} style={{ color: 'var(--primary-light)' }} />
           </div>
           <div className="roadmap-note-content">
-            <h4>B.Tech Macro Project Evaluation Guide</h4>
+            <h4>Live AI Smart Tutor & Interactive Exploration</h4>
             <p>
-              These 3 biology modules demonstrate our complete frontend user journey. In Phase 2, the 3D model viewport will load live WebGL GLTF files with touch rotation and WebXR AR camera pass-through.
+              Click <strong>"Ask AI"</strong> on any topic above to launch EduBot AI tutor with instant question context, or select <strong>"Explore"</strong> to open the full learning view with interactive diagrams, details, and prompt suggestions.
             </p>
           </div>
         </div>

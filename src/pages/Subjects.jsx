@@ -11,7 +11,8 @@ import {
   Sparkles,
   Lock,
   Layers,
-  Search
+  Search,
+  Bot
 } from 'lucide-react';
 import { SUBJECTS } from '../data/learningData';
 import './Subjects.css';
@@ -19,7 +20,7 @@ import './Subjects.css';
 /**
  * Subjects Page Component
  * Allows students to select their field of study.
- * Biology is active with ready 3D topics; others showcase the upcoming academic modules.
+ * All STEM subjects are connected with 3D/interactive modules and AI Smart Tutoring.
  */
 export default function Subjects() {
   const [searchQuery, setSearchQuery] = useState('');
@@ -59,20 +60,26 @@ export default function Subjects() {
               Explore Academic <span className="gradient-text">STEM Disciplines</span>
             </h1>
             <p className="subjects-subtitle">
-              Select a subject to dive into interactive 3D spatial models, AR camera projections, and AI-assisted tutoring.
+              Select any subject to dive into interactive 3D spatial models, AR camera projections, and AI-assisted tutoring powered by Gemini.
             </p>
           </div>
 
-          {/* Search Bar */}
-          <div className="search-bar-wrapper">
-            <Search size={18} className="search-icon" />
-            <input 
-              type="text" 
-              placeholder="Search subjects or concepts..." 
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="search-input"
-            />
+          {/* Search Bar & Quick AI link */}
+          <div className="subjects-header-actions">
+            <div className="search-bar-wrapper">
+              <Search size={18} className="search-icon" />
+              <input 
+                type="text" 
+                placeholder="Search subjects or concepts..." 
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="search-input"
+              />
+            </div>
+            <Link to="/chat" className="btn btn-secondary ask-ai-header-btn">
+              <Bot size={16} />
+              <span>Ask EduVision AI</span>
+            </Link>
           </div>
         </div>
 
@@ -111,36 +118,33 @@ export default function Subjects() {
                 </div>
 
                 <div className="subject-card-footer">
-                  {isActive ? (
-                    <>
-                      <div className="subject-meta-info">
-                        <span className="topic-count-highlight">{subject.topicsCount} Interactive Topics</span>
-                        <span className="topic-status-text">Ready for 3D & AR</span>
-                      </div>
-                      <Link 
-                        to={`/topics/${subject.id}`} 
-                        className="btn btn-emerald subject-enter-btn"
-                        style={{
-                          backgroundColor: subject.accentColor,
-                          color: '#ffffff'
-                        }}
-                      >
-                        <span>Open Modules</span>
-                        <ArrowRight size={16} />
-                      </Link>
-                    </>
-                  ) : (
-                    <>
-                      <div className="subject-meta-info">
-                        <span className="topic-count-muted">Curriculum in Development</span>
-                        <span className="topic-status-text">Available in {subject.statusLabel}</span>
-                      </div>
-                      <div className="locked-btn-chip">
-                        <Lock size={14} />
-                        <span>Queued</span>
-                      </div>
-                    </>
-                  )}
+                  <div className="subject-meta-info">
+                    <span className="topic-count-highlight">{subject.topicsCount} Interactive Topics</span>
+                    <span className="topic-status-text">AI Tutor & 3D Ready</span>
+                  </div>
+
+                  <div className="subject-btn-group">
+                    <Link 
+                      to={`/chat?subject=${encodeURIComponent(subject.name)}`}
+                      className="btn btn-secondary subject-ai-btn"
+                      title={`Ask EduBot AI Tutor about ${subject.name}`}
+                    >
+                      <Bot size={15} />
+                      <span>Ask AI</span>
+                    </Link>
+
+                    <Link 
+                      to={`/topics/${subject.id}`} 
+                      className="btn btn-emerald subject-enter-btn"
+                      style={{
+                        backgroundColor: subject.accentColor,
+                        color: '#ffffff'
+                      }}
+                    >
+                      <span>Explore</span>
+                      <ArrowRight size={15} />
+                    </Link>
+                  </div>
                 </div>
               </div>
             );
@@ -150,16 +154,18 @@ export default function Subjects() {
         {/* Informative Guidance Banner */}
         <div className="subjects-info-banner glass-card">
           <div className="banner-icon-box">
-            <Sparkles size={24} className="banner-icon" />
+            <Bot size={28} className="banner-icon" />
           </div>
           <div className="banner-text">
-            <h4 className="banner-title">Phase 1 Focus: Biological Sciences</h4>
+            <h4 className="banner-title">EduBot AI Smart Tutor Online For All Subjects</h4>
             <p className="banner-desc">
-              For Phase 1 of our B.Tech macro project, we have fully designed the <strong>Biology</strong> module featuring the Human Heart, Human Brain, and Plant Cell. Select Biology above to inspect the 3D learning lab!
+              Have doubts or need a concept explained step-by-step? Ask the <strong>EduVision AI Tutor</strong> about Biology, Physics, Chemistry, Mathematics, or Computer Science anytime!
             </p>
           </div>
-          <Link to="/topics/biology" className="btn btn-primary banner-action-btn">
-            Explore Biology Lab <ArrowRight size={16} />
+          <Link to="/chat" className="btn btn-primary banner-action-btn">
+            <Bot size={18} />
+            <span>Launch AI Smart Tutor</span>
+            <ArrowRight size={16} />
           </Link>
         </div>
       </div>

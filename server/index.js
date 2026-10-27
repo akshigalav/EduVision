@@ -47,7 +47,7 @@ Guidelines:
 
 // ── POST /api/chat ─────────────────────────────────────────────────────────────
 app.post('/api/chat', async (req, res) => {
-  const { message, history = [] } = req.body;
+  const { message, history = [], subject } = req.body;
 
   if (!message || typeof message !== 'string' || !message.trim()) {
     return res.status(400).json({ error: 'Message is required.' });
@@ -62,9 +62,14 @@ app.post('/api/chat', async (req, res) => {
         parts: [{ text: m.content }],
       }));
 
+    let systemInstruction = SYSTEM_PROMPT;
+    if (subject && subject !== 'all') {
+      systemInstruction += `\n\nAcademic Subject Focus: The student is studying ${subject}. Tailor your terminology, real-world examples, and step-by-step explanations specifically for ${subject}.`;
+    }
+
     const chat = ai.chats.create({
       model: 'gemini-3.5-flash',
-      config: { systemInstruction: SYSTEM_PROMPT },
+      config: { systemInstruction },
       history: chatHistory,
     });
 
