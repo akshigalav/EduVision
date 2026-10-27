@@ -61,15 +61,22 @@ EduVision AR is an interactive, web-based educational platform designed for spat
    npm install
    ```
 
-3. Start the local development server:
-   ```bash
-   npm run dev
-   ```
+3. Start the application:
+   - **Frontend & AI Backend together (Recommended):**
+     ```bash
+     npm run dev:all
+     ```
+   - **Frontend only:**
+     ```bash
+     npm run dev
+     ```
 
 4. Open your browser and navigate to:
    ```
    http://localhost:5173
    ```
+
+> **Note on AI Tutor**: EduBot runs in Curriculum Demo Mode out of the box with zero configuration. To activate live Gemini 2.5 generation, either add `GEMINI_API_KEY=your_key` in `server/.env` or click the "Add Key" button in the chat interface.
 
 ---
 

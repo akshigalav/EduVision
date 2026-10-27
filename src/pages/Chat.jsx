@@ -26,13 +26,19 @@ import {
   GitBranch,
   BarChart2,
   Brain,
-  Leaf
+  Leaf,
+  Key,
+  Check,
+  AlertCircle,
+  RefreshCw
 } from 'lucide-react';
 import './Chat.css';
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
-const API_URL = 'http://localhost:3001/api/chat';
+// Use relative URL so Vite proxy forwards /api to http://localhost:3001
+const API_URL = '/api/chat';
+const HEALTH_URL = '/api/health';
 
 export const SUBJECT_TABS = [
   { id: 'all', label: 'All Subjects', icon: <Sparkles size={14} />, color: '#6366f1' },
@@ -90,6 +96,30 @@ function formatTime(date) {
   return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 }
 
+function getLocalCurriculumReply(query, subject) {
+  const q = query.toLowerCase();
+  if (q.includes('heart') || q.includes('cardiac') || q.includes('blood') || q.includes('valve')) {
+    return `### The Human Heart: The Ultimate Biological Pump ❤️\n\nThe **human heart** is a muscular organ about the size of a fist that circulates blood throughout the body.\n\n#### 🫀 Key Anatomical Chambers:\n- **Right Atrium (RA)**: Collects oxygen-depleted blood from the superior & inferior vena cava.\n- **Right Ventricle (RV)**: Propels deoxygenated blood via the pulmonary artery into the lungs.\n- **Left Atrium (LA)**: Receives fresh oxygen-rich blood from the lungs via pulmonary veins.\n- **Left Ventricle (LV)**: The most muscular chamber, pumping oxygenated blood under high pressure through the **aorta** to your body.\n\n*Tip: Explore the **3D Heart Viewer** or **Try AR** right here in EduVision!*`;
+  }
+  if (q.includes('photosynthesis') || q.includes('plant')) {
+    return `### What is Photosynthesis? 🌿\n\n**Photosynthesis** is how plants convert sunlight into chemical energy (glucose).\n\n#### 🔬 Chemical Formula:\n\`6CO₂ + 6H₂O + Sunlight ➔ C₆H₁₂O₆ + 6O₂\`\n\n- **Light Reactions**: Chlorophyll absorbs light and splits water molecules, producing ATP, NADPH, and oxygen.\n- **Calvin Cycle**: Fixes $CO_2$ into sugars inside the stroma.`;
+  }
+  if (q.includes('pythagor') || q.includes('triangle')) {
+    return `### The Pythagorean Theorem 📐\n\nFor any right-angled triangle:\n\`a² + b² = c²\`\n\n- **a** and **b**: The two shorter sides forming the 90° right angle.\n- **c**: The **hypotenuse** (the longest side directly opposite the right angle).`;
+  }
+  if (q.includes('season') || q.includes('earth')) {
+    return `### Why Does Earth Have Seasons? 🌍\n\nSeasons are caused by Earth's **23.5° axial tilt** as it revolves around the Sun over the course of a year. When a hemisphere leans toward the Sun, it experiences warmer summer days with direct rays; when it tilts away, it experiences winter.`;
+  }
+  if (q.includes('newton') || q.includes('motion')) {
+    return `### Newton's Three Laws of Motion 🚀\n\n1. **First Law (Inertia)**: Objects remain at rest or constant velocity unless acted on by net force.\n2. **Second Law**: \`Force = Mass × Acceleration (F = ma)\`\n3. **Third Law**: For every action, there is an equal and opposite reaction.`;
+  }
+  const subLabel = subject && subject !== 'all' ? ` [${subject.toUpperCase()}]` : '';
+  return `### Hello from EduBot! 🎓${subLabel}\n\nGreat question: **"${query}"**\n\nI can help break down topics across **Biology, Physics, Chemistry, Mathematics, and Computer Science**.\n\nTry asking me about:\n- **Human Heart & Circulation**\n- **Photosynthesis & Cellular Respiration**\n- **Pythagorean Theorem & Trigonometry**\n- **Newton's Laws of Motion & Induction**`;
+}
+
+/**
+ * Minimal markdown renderer: bold, inline code, lists, paragraphs.
+ */
 function renderMarkdown(text) {
   const lines = text.split('\n');
   const elements = [];
@@ -101,7 +131,6 @@ function renderMarkdown(text) {
 
     if (!line.trim()) { i++; continue; }
 
-    // Unordered list
     if (/^[-*]\s/.test(line)) {
       const items = [];
       while (i < lines.length && /^[-*]\s/.test(lines[i])) {
@@ -112,7 +141,6 @@ function renderMarkdown(text) {
       continue;
     }
 
-    // Ordered list
     if (/^\d+\.\s/.test(line)) {
       const items = [];
       while (i < lines.length && /^\d+\.\s/.test(lines[i])) {
@@ -123,14 +151,18 @@ function renderMarkdown(text) {
       continue;
     }
 
-    // Heading (## or ###)
-    if (/^#{2,3}\s/.test(line)) {
-      elements.push(<h3 key={key++}>{inlineMarkdown(line.replace(/^#{2,3}\s/, ''))}</h3>);
+    if (/^#{1,3}\s/.test(line)) {
+      elements.push(<h3 key={key++}>{inlineMarkdown(line.replace(/^#{1,3}\s/, ''))}</h3>);
       i++;
       continue;
     }
 
-    // Regular paragraph
+    if (/^>\s/.test(line)) {
+      elements.push(<blockquote key={key++}>{inlineMarkdown(line.replace(/^>\s/, ''))}</blockquote>);
+      i++;
+      continue;
+    }
+
     elements.push(<p key={key++}>{inlineMarkdown(line)}</p>);
     i++;
   }
@@ -169,9 +201,41 @@ export default function Chat() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
+  // Server & key state
+  const [serverStatus, setServerStatus] = useState('checking'); // 'checking' | 'live' | 'demo' | 'offline'
+  const [showKeyModal, setShowKeyModal] = useState(false);
+  const [customKey, setCustomKey] = useState(() => localStorage.getItem('eduvision_gemini_key') || '');
+  const [tempKeyInput, setTempKeyInput] = useState('');
+
   const messagesEndRef = useRef(null);
   const textareaRef = useRef(null);
   const initialQuerySentRef = useRef(false);
+
+  // Check backend health
+  const checkHealth = useCallback(async () => {
+    setServerStatus('checking');
+    try {
+      const headers = {};
+      const keyToUse = customKey || localStorage.getItem('eduvision_gemini_key');
+      if (keyToUse) headers['x-gemini-key'] = keyToUse;
+
+      const res = await fetch(HEALTH_URL, { headers });
+      if (!res.ok) throw new Error('Health check failed');
+      const data = await res.json();
+
+      if (data.hasKey) {
+        setServerStatus('live');
+      } else {
+        setServerStatus('demo');
+      }
+    } catch {
+      setServerStatus('offline');
+    }
+  }, [customKey]);
+
+  useEffect(() => {
+    checkHealth();
+  }, [checkHealth]);
 
   // Auto-scroll to bottom on new messages
   useEffect(() => {
@@ -194,7 +258,6 @@ export default function Chat() {
 
     const currentSub = overrideSubject || activeSubject;
 
-    // Append user message
     const userMsg = { role: 'user', content: trimmed, time: new Date() };
     setMessages(prev => [...prev, userMsg]);
     setInput('');
@@ -206,11 +269,15 @@ export default function Chat() {
     }
 
     const history = messages.map(m => ({ role: m.role, content: m.content }));
+    const keyToUse = customKey || localStorage.getItem('eduvision_gemini_key');
 
     try {
+      const headers = { 'Content-Type': 'application/json' };
+      if (keyToUse) headers['x-gemini-key'] = keyToUse;
+
       const res = await fetch(API_URL, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({ 
           message: trimmed, 
           history, 
@@ -218,24 +285,33 @@ export default function Chat() {
         }),
       });
 
-      const data = await res.json();
-
       if (!res.ok) {
-        throw new Error(data.error || 'Failed to get a response.');
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || 'Server returned an error.');
       }
 
+      const data = await res.json();
       const aiMsg = { role: 'assistant', content: data.reply, time: new Date() };
       setMessages(prev => [...prev, aiMsg]);
     } catch (err) {
-      setError(
-        err.message.includes('Failed to fetch')
-          ? 'Cannot connect to the AI server. Make sure the backend is running on port 3001.'
-          : err.message
-      );
+      // If backend is offline or fetch failed, gracefully answer from local curriculum knowledge
+      const fallbackReply = getLocalCurriculumReply(trimmed, currentSub);
+      const isConnectionIssue = err.message.includes('Failed to fetch') || err.message.includes('NetworkError');
+
+      const aiMsg = {
+        role: 'assistant',
+        content: `${fallbackReply}\n\n*(Offline Mode: Answering from local educational curriculum)*`,
+        time: new Date(),
+      };
+      setMessages(prev => [...prev, aiMsg]);
+
+      if (isConnectionIssue) {
+        setError('Backend is offline. Running in zero-setup Local Curriculum Mode.');
+      }
     } finally {
       setLoading(false);
     }
-  }, [loading, messages, activeSubject]);
+  }, [activeSubject, customKey, loading, messages]);
 
   // Automatically submit initial query if present in URL
   useEffect(() => {
@@ -261,6 +337,19 @@ export default function Chat() {
     setError(null);
   };
 
+  const saveCustomKey = () => {
+    const clean = tempKeyInput.trim();
+    if (clean) {
+      localStorage.setItem('eduvision_gemini_key', clean);
+      setCustomKey(clean);
+    } else {
+      localStorage.removeItem('eduvision_gemini_key');
+      setCustomKey('');
+    }
+    setShowKeyModal(false);
+    setTimeout(checkHealth, 300);
+  };
+
   const canSend = input.trim().length > 0 && !loading;
 
   const currentQuestions = SUBJECT_QUESTIONS[activeSubject] || SUBJECT_QUESTIONS.all;
@@ -276,15 +365,40 @@ export default function Chat() {
           </div>
           <div className="chat-header-info">
             <h1 className="gradient-text">EduBot AI Smart Tutor</h1>
-            <div className="chat-status">
-              <span className="status-dot" />
+            <div className={`chat-status ${serverStatus}`}>
+              <span className={`status-dot ${serverStatus}`} />
               <span>
-                Online · Powered by Gemini AI
-                {activeSubject !== 'all' ? ` (${activeTabMeta.label} Specialist)` : ' (All STEM Subjects)'}
+                {serverStatus === 'checking' && 'Connecting…'}
+                {serverStatus === 'live' && `Online · Powered by Gemini 2.5 (${activeTabMeta.label} Specialist)`}
+                {serverStatus === 'demo' && `Curriculum Demo Mode (${activeTabMeta.label})`}
+                {serverStatus === 'offline' && 'Local Mode (Backend Offline)'}
               </span>
             </div>
           </div>
           <div className="chat-header-actions">
+            <button
+              className={`icon-btn key-btn ${customKey ? 'active' : ''}`}
+              onClick={() => {
+                setTempKeyInput(customKey);
+                setShowKeyModal(true);
+              }}
+              title="Configure Gemini API Key"
+              aria-label="Configure API Key"
+              id="config-key-btn"
+            >
+              <Key size={16} />
+              <span className="key-btn-label">{customKey ? 'Key Set' : 'Add Key'}</span>
+            </button>
+
+            <button
+              className="icon-btn"
+              onClick={checkHealth}
+              title="Refresh connection status"
+              aria-label="Refresh status"
+            >
+              <RefreshCw size={15} />
+            </button>
+
             {messages.length > 0 && (
               <button
                 className="icon-btn"
@@ -319,6 +433,52 @@ export default function Chat() {
           })}
         </div>
       </div>
+
+      {/* ── API Key Configuration Modal ── */}
+      {showKeyModal && (
+        <div className="key-modal-overlay" onClick={() => setShowKeyModal(false)}>
+          <div className="key-modal" onClick={e => e.stopPropagation()}>
+            <div className="key-modal-header">
+              <h3>Configure Gemini API Key</h3>
+              <button className="icon-btn close-modal-btn" onClick={() => setShowKeyModal(false)}>
+                <X size={16} />
+              </button>
+            </div>
+            <p className="key-modal-desc">
+              You can set your Gemini API key in <code>server/.env</code> or enter it below to use it directly in your browser session.
+            </p>
+            <div className="key-input-wrapper">
+              <input
+                type="password"
+                className="key-input"
+                placeholder="AIzaSy..."
+                value={tempKeyInput}
+                onChange={e => setTempKeyInput(e.target.value)}
+              />
+            </div>
+            <div className="key-modal-actions">
+              {customKey && (
+                <button
+                  className="btn-secondary"
+                  onClick={() => {
+                    setTempKeyInput('');
+                    localStorage.removeItem('eduvision_gemini_key');
+                    setCustomKey('');
+                    setShowKeyModal(false);
+                    setTimeout(checkHealth, 300);
+                  }}
+                >
+                  Clear Key
+                </button>
+              )}
+              <button className="btn-primary" onClick={saveCustomKey}>
+                <Check size={16} />
+                Save Key
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── Example Questions for Active Subject ── */}
       {messages.length === 0 && (
@@ -411,10 +571,10 @@ export default function Chat() {
         <div ref={messagesEndRef} />
       </div>
 
-      {/* ── Error Banner ── */}
+      {/* ── Notice / Error Banner ── */}
       {error && (
         <div className="chat-error-banner" role="alert" id="chat-error">
-          <X size={16} />
+          <AlertCircle size={16} />
           <span>{error}</span>
           <button
             className="error-dismiss"
