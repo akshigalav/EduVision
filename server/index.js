@@ -67,14 +67,29 @@ app.post('/api/chat', async (req, res) => {
       systemInstruction += `\n\nAcademic Subject Focus: The student is studying ${subject}. Tailor your terminology, real-world examples, and step-by-step explanations specifically for ${subject}.`;
     }
 
-    const chat = ai.chats.create({
-      model: 'gemini-3.5-flash',
-      config: { systemInstruction },
-      history: chatHistory,
-    });
-
-    const response = await chat.sendMessage({ message: message.trim() });
-    const reply = response.text;
+    let reply;
+    try {
+      const chat = ai.chats.create({
+        model: 'gemini-3.5-flash',
+        config: { systemInstruction },
+        history: chatHistory,
+      });
+      const response = await chat.sendMessage({ message: message.trim() });
+      reply = response.text;
+    } catch (primaryErr) {
+      if (primaryErr?.status === 503 || String(primaryErr?.message).includes('503')) {
+        console.warn('503 spike encountered; retrying with gemini-3.8-flash...');
+        const fallbackChat = ai.chats.create({
+          model: 'gemini-3.8-flash',
+          config: { systemInstruction },
+          history: chatHistory,
+        });
+        const fallbackRes = await fallbackChat.sendMessage({ message: message.trim() });
+        reply = fallbackRes.text;
+      } else {
+        throw primaryErr;
+      }
+    }
 
     return res.json({ reply });
   } catch (err) {
