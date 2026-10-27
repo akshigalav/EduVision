@@ -7,6 +7,7 @@ import Subjects from './pages/Subjects';
 import Topics from './pages/Topics';
 import Learning from './pages/Learning';
 import ARView from './pages/ARView';
+import Chat from './pages/Chat';
 import './App.css';
 
 /**
@@ -54,6 +55,9 @@ export default function App() {
             {/* 5. Phase 3 Web-based Augmented Reality */}
             <Route path="/ar/:topicId" element={<ARView />} />
             <Route path="/ar" element={<ARView />} />
+
+            {/* 6. AI Chat Tutor */}
+            <Route path="/chat" element={<Chat />} />
 
             {/* Fallback to Home */}
             <Route path="*" element={<Home />} />

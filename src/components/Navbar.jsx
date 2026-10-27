@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, NavLink } from 'react-router-dom';
-import { Sparkles, Compass, Layers, Menu, X, BookOpen } from 'lucide-react';
+import { Sparkles, Compass, Layers, Menu, X, BookOpen, MessageSquare } from 'lucide-react';
 import './Navbar.css';
 
 /**
@@ -47,6 +47,13 @@ export default function Navbar() {
           >
             Subjects
           </NavLink>
+          <NavLink 
+            to="/chat" 
+            className={({ isActive }) => (isActive ? 'nav-link active' : 'nav-link')}
+          >
+            <MessageSquare size={14} style={{display:'inline',verticalAlign:'middle',marginRight:'4px'}} />
+            AI Tutor
+          </NavLink>
           <a href="#features" className="nav-link" onClick={() => {
             // If on another page, let default link handle or smooth scroll
           }}>
@@ -89,6 +96,14 @@ export default function Navbar() {
             onClick={closeMobileMenu}
           >
             Subjects
+          </NavLink>
+          <NavLink 
+            to="/chat" 
+            className="mobile-nav-link" 
+            onClick={closeMobileMenu}
+          >
+            <MessageSquare size={14} style={{display:'inline',verticalAlign:'middle',marginRight:'6px'}} />
+            AI Tutor
           </NavLink>
           <Link 
             to="/subjects" 
