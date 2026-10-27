@@ -1,9 +1,14 @@
 // EduVision AI Chat Backend Server
 // Secure proxy for Gemini API — API key never leaves the server
-import 'dotenv/config';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import dotenv from 'dotenv';
 import express from 'express';
 import cors from 'cors';
 import { GoogleGenAI } from '@google/genai';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+dotenv.config({ path: path.join(__dirname, '.env') });
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -58,7 +63,7 @@ app.post('/api/chat', async (req, res) => {
       }));
 
     const chat = ai.chats.create({
-      model: 'gemini-3.6-flash',
+      model: 'gemini-3.5-flash',
       config: { systemInstruction: SYSTEM_PROMPT },
       history: chatHistory,
     });
@@ -84,7 +89,7 @@ return res.status(status).json({ error: message });
 
 // ── Health check ───────────────────────────────────────────────────────────────
 app.get('/api/health', (_req, res) => {
-  res.json({ status: 'ok', model: 'gemini-3.6-flash' });
+  res.json({ status: 'ok', model: 'gemini-3.5-flash' });
 });
 
 // ── Start ──────────────────────────────────────────────────────────────────────
