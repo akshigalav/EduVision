@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState, useCallback } from 'react';
+import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import * as THREE from 'three';
 import { MindARThree } from 'mind-ar/dist/mindar-image-three.prod.js';
@@ -122,20 +122,30 @@ export default function ARView() {
   const animFrameIdRef = useRef(null);
   const fileInputRef = useRef(null);
 
-  // Active Organ / System Scan Data
-  const topicComponents = MODEL_COMPONENTS_DATA[topicId] || MODEL_COMPONENTS_DATA['human-heart'];
-  const organData = ORGAN_SCAN_DATA[topicId] || {
-    name: topicComponents.title,
-    category: topicComponents.system,
-    confidence: '98.9%',
-    telemetry: topicComponents.telemetry || [],
-    chambers: topicComponents.components?.map(c => ({
-      name: c.name,
-      desc: c.summary,
-      color: c.color
-    })) || [],
-    aiPrompt: `Explain the scientific principles and functional architecture of ${topicComponents.title}`
-  };
+  const [retryTrigger, setRetryTrigger] = useState(0);
+
+  // Active Organ / System Scan Data (Memoized to prevent render thrashing)
+  const organData = useMemo(() => {
+    if (ORGAN_SCAN_DATA[topicId]) return ORGAN_SCAN_DATA[topicId];
+    const topicComponents = MODEL_COMPONENTS_DATA[topicId] || MODEL_COMPONENTS_DATA['human-heart'];
+    return {
+      name: topicComponents.title,
+      category: topicComponents.system,
+      confidence: '98.9%',
+      telemetry: topicComponents.telemetry || [],
+      chambers: topicComponents.components?.map(c => ({
+        name: c.name,
+        desc: c.summary,
+        color: c.color
+      })) || [],
+      aiPrompt: `Explain the scientific principles and functional architecture of ${topicComponents.title}`
+    };
+  }, [topicId]);
+
+  const organDataRef = useRef(organData);
+  useEffect(() => {
+    organDataRef.current = organData;
+  }, [organData]);
 
   // AR View States
   const [cameraReady, setCameraReady] = useState(false);
@@ -187,7 +197,7 @@ export default function ARView() {
 
     setCameraReady(true);
     setTargetDetected(true);
-    setScannedResult(organData);
+    setScannedResult(organDataRef.current);
 
     const clock = { start: performance.now() };
     const simAnimate = () => {
@@ -211,7 +221,7 @@ export default function ARView() {
         container.removeChild(simRenderer.domElement);
       }
     };
-  }, [topicId, organData]);
+  }, [topicId]);
 
   // -------------------------------------------------------------
   // INITIALIZE MINDAR OR SIMULATION
@@ -237,17 +247,19 @@ export default function ARView() {
         container.innerHTML = '';
 
         const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-        const preferredFacingMode = isMobile ? 'environment' : 'user';
+        const webcamConfig = isMobile ? { facingMode: 'environment' } : {};
 
         mindarThree = new MindARThree({
           container,
           imageTargetSrc: '/targets/heart-target.mind',
+          filterMinCF: 0.0001,
+          filterBeta: 0.001,
+          missTolerance: 5,
+          warmupTolerance: 2,
           uiLoading: 'no',
           uiScanning: 'no',
           uiError: 'no',
-          webcamConfig: {
-            facingMode: preferredFacingMode
-          }
+          webcamConfig
         });
         mindarRef.current = mindarThree;
 
@@ -275,13 +287,12 @@ export default function ARView() {
         anchor.onTargetFound = () => {
           if (!isMounted) return;
           setTargetDetected(true);
-          setScannedResult(organData);
+          setScannedResult(organDataRef.current);
           playTargetLockChime();
         };
 
         anchor.onTargetLost = () => {
           if (!isMounted) return;
-          // Keep target detected for seamless viewing unless explicitly reset
         };
 
         await mindarThree.start();
@@ -302,16 +313,10 @@ export default function ARView() {
           const rawMsg = err?.message || (typeof err === 'string' ? err : '');
           const isDeviceInUse = rawMsg.includes('Device in use') || rawMsg.includes('NotReadableError');
           const finalMsg = isDeviceInUse
-            ? 'Your camera is currently in use by another app or browser tab (e.g. Google Meet, Zoom, or Teams). Turn off camera in the other tab or use 3D Sandbox mode below.'
+            ? 'Your camera is currently in use by another app or browser tab (e.g. Google Meet, Zoom, or Teams). Turn off camera in the other tab, or use 3D Sandbox mode below.'
             : (rawMsg || 'Webcam access unavailable or permissions blocked.');
 
           setCameraError(finalMsg);
-          // Auto switch to interactive 3D simulation mode so user is never stuck
-          setTimeout(() => {
-            if (isMounted && !cameraReady) {
-              setSimulationMode(true);
-            }
-          }, 1000);
         }
       }
     };
@@ -323,7 +328,9 @@ export default function ARView() {
       if (mindarThree) {
         try {
           mindarThree.stop();
-          mindarThree.renderer.setAnimationLoop(null);
+          if (mindarThree.renderer) {
+            mindarThree.renderer.setAnimationLoop(null);
+          }
         } catch {}
       }
       const video = container.querySelector('video');
@@ -332,7 +339,7 @@ export default function ARView() {
       }
       container.innerHTML = '';
     };
-  }, [simulationMode, topicId, organData, startSimulation]);
+  }, [simulationMode, topicId, retryTrigger, startSimulation]);
 
   // -------------------------------------------------------------
   // SMART PHOTO / DIAGRAM SCANNER
@@ -629,8 +636,15 @@ export default function ARView() {
               {cameraError}
             </p>
             <div className="target-modal-actions">
-              <button className="btn btn-secondary" onClick={() => navigate(`/learn/${topicId}`)}>
-                Exit to Learning
+              <button 
+                className="btn btn-secondary" 
+                onClick={() => {
+                  setCameraError(null);
+                  setRetryTrigger(prev => prev + 1);
+                }}
+              >
+                <RotateCw size={14} style={{ marginRight: 6 }} />
+                <span>Retry Camera</span>
               </button>
               <button 
                 className="btn btn-primary" 
@@ -640,6 +654,9 @@ export default function ARView() {
                 }}
               >
                 Use 3D Sandbox Mode
+              </button>
+              <button className="btn btn-secondary" onClick={() => navigate(`/learn/${topicId}`)}>
+                Exit to Learning
               </button>
             </div>
           </div>
