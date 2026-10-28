@@ -136,6 +136,20 @@ export default function Topics() {
                 </div>
               </div>
 
+              {['human-heart', 'human-brain', 'plant-cell'].includes(topic.id) && (
+                <div className="topic-media-preview">
+                  <img 
+                    src={`/images/${topic.id}.jpg`} 
+                    alt={topic.title} 
+                    className="topic-preview-img" 
+                    loading="lazy"
+                  />
+                  <span className="topic-preview-badge">
+                    <Sparkles size={11} /> Realistic 3D Medical Render
+                  </span>
+                </div>
+              )}
+
               <div className="topic-card-content">
                 <span className="topic-category-tag">{topic.category}</span>
                 <h3 className="topic-title">{topic.title}</h3>

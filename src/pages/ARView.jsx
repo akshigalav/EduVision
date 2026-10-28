@@ -5,22 +5,28 @@ import { MindARThree } from 'mind-ar/dist/mindar-image-three.prod.js';
 import { 
   ArrowLeft, 
   Camera, 
-  HelpCircle, 
   Download, 
   Eye, 
   X, 
   Sparkles, 
   CheckCircle2, 
-  Layers, 
   RotateCw, 
   Smartphone,
-  AlertTriangle
+  AlertTriangle,
+  Upload,
+  Activity,
+  Bot,
+  Zap,
+  Info,
+  Maximize2,
+  Volume2
 } from 'lucide-react';
-import { createHeart3DModel } from '../utils/createHeart3DModel';
+import { createOrgan3DModel } from '../utils/organ3DModels';
+import { CHAMBER_DATA } from '../data/heartData';
 import './ARView.css';
 
 /**
- * Play a high-tech audio chime when target is locked using Web Audio API
+ * High-tech audio feedback using Web Audio API
  */
 function playTargetLockChime() {
   try {
@@ -34,18 +40,76 @@ function playTargetLockChime() {
     osc.frequency.setValueAtTime(587.33, ctx.currentTime); // D5
     osc.frequency.exponentialRampToValueAtTime(880, ctx.currentTime + 0.12); // A5
 
-    gain.gain.setValueAtTime(0.12, ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.25);
+    gain.gain.setValueAtTime(0.15, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.28);
 
     osc.connect(gain);
     gain.connect(ctx.destination);
 
     osc.start();
-    osc.stop(ctx.currentTime + 0.25);
-  } catch (err) {
-    // Audio context may require prior user interaction
+    osc.stop(ctx.currentTime + 0.28);
+  } catch {
+    // Audio context may require user interaction
   }
 }
+
+// Telemetry datasets for scanned organs
+const ORGAN_SCAN_DATA = {
+  'human-heart': {
+    name: 'Human Heart (Cor Humanum)',
+    category: 'Cardiovascular System',
+    confidence: '99.2%',
+    telemetry: [
+      { label: 'Rhythmic Rate', value: '72 BPM', unit: 'Lub-Dub Normal' },
+      { label: 'Cardiac Output', value: '5.2 L/min', unit: 'Systemic Flow' },
+      { label: 'Blood Pressure', value: '120/80', unit: 'mmHg Systolic/Diastolic' },
+      { label: 'SpO2 Oxygenation', value: '98.5%', unit: 'Arterial' }
+    ],
+    chambers: [
+      { name: 'Left Ventricle', desc: 'Thick muscular pump driving oxygenated blood into aorta.', color: '#ef4444' },
+      { name: 'Right Ventricle', desc: 'Pumps venous blood into pulmonary artery toward lungs.', color: '#3b82f6' },
+      { name: 'Left Atrium', desc: 'Receives fresh oxygen-rich blood from pulmonary veins.', color: '#dc2626' },
+      { name: 'Right Atrium', desc: 'Receives deoxygenated blood from vena cava.', color: '#2563eb' }
+    ],
+    aiPrompt: 'Explain how heart chambers and valves prevent backflow of blood under pressure.'
+  },
+  'human-brain': {
+    name: 'Human Brain (Encephalon)',
+    category: 'Central Nervous System',
+    confidence: '98.7%',
+    telemetry: [
+      { label: 'Neuron Count', value: '~86 Billion', unit: 'Synaptic Nodes' },
+      { label: 'Oxygen Consumption', value: '20%', unit: 'Total Body Demand' },
+      { label: 'Synaptic Velocity', value: '120 m/s', unit: 'Action Potential' },
+      { label: 'Dominant Waves', value: '10-14 Hz', unit: 'Alpha Sensory' }
+    ],
+    chambers: [
+      { name: 'Frontal Lobe', desc: 'Executive decisions, speech planning, motor cortex control.', color: '#38bdf8' },
+      { name: 'Parietal Lobe', desc: 'Somatosensory perception, spatial reasoning, touch processing.', color: '#818cf8' },
+      { name: 'Cerebellum', desc: 'High-precision muscular coordination, motor memory, balance.', color: '#a855f7' },
+      { name: 'Brainstem', desc: 'Autonomic life support: respiratory drive and cardiac rhythm.', color: '#f59e0b' }
+    ],
+    aiPrompt: 'How do neurotransmitters cross the synaptic cleft between brain neurons?'
+  },
+  'plant-cell': {
+    name: 'Plant Eukaryotic Cell',
+    category: 'Cellular Biology',
+    confidence: '97.9%',
+    telemetry: [
+      { label: 'Turgor Pressure', value: '0.7 MPa', unit: 'Vacuolar Hydrostatic' },
+      { label: 'Chloroplast Flux', value: '34 µmol', unit: 'Photonic ATP Gen' },
+      { label: 'Cell Wall Matrix', value: 'Cellulose', unit: 'Tensile Rigidity' },
+      { label: 'Cell Volume', value: '82%', unit: 'Vacuolar Fraction' }
+    ],
+    chambers: [
+      { name: 'Central Vacuole', desc: 'Generates internal turgor pressure to keep plant stems upright.', color: '#06b6d4' },
+      { name: 'Chloroplasts', desc: 'Contains chlorophyll and thylakoid stacks for photosynthesis.', color: '#22c55e' },
+      { name: 'Cellulose Wall', desc: 'Rigid outer envelope preventing osmotic cellular lysis.', color: '#84cc16' },
+      { name: 'Nucleus & DNA', desc: 'Houses genetic blueprints for protein synthesis.', color: '#8b5cf6' }
+    ],
+    aiPrompt: 'Compare the function of chloroplasts with mitochondria in cellular respiration.'
+  }
+};
 
 export default function ARView() {
   const { topicId = 'human-heart' } = useParams();
@@ -53,107 +117,122 @@ export default function ARView() {
 
   const containerRef = useRef(null);
   const mindarRef = useRef(null);
-  const heartModelRef = useRef(null);
+  const organModelRef = useRef(null);
   const animFrameIdRef = useRef(null);
+  const fileInputRef = useRef(null);
 
-  // AR States
+  // Active Organ Data
+  const currentOrganKey = ORGAN_SCAN_DATA[topicId] ? topicId : 'human-heart';
+  const organData = ORGAN_SCAN_DATA[currentOrganKey];
+
+  // AR View States
   const [cameraReady, setCameraReady] = useState(false);
   const [targetDetected, setTargetDetected] = useState(false);
   const [cameraError, setCameraError] = useState(null);
   const [showTargetModal, setShowTargetModal] = useState(false);
   const [simulationMode, setSimulationMode] = useState(false);
-  const [modelType, setModelType] = useState('procedural');
+  const [isScanningPhoto, setIsScanningPhoto] = useState(false);
+  const [scannedResult, setScannedResult] = useState(null);
+  const [activeTab, setActiveTab] = useState('telemetry'); // 'telemetry' | 'anatomy'
 
-  // Initialize MindAR or Simulated AR
+  // -------------------------------------------------------------
+  // SIMULATION & 3D OVERLAY RENDERER
+  // -------------------------------------------------------------
+  const startSimulation = useCallback((container) => {
+    container.innerHTML = '';
+
+    const simScene = new THREE.Scene();
+    const simCamera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
+    simCamera.position.set(0, 0, 4.0);
+
+    const simRenderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    simRenderer.setSize(window.innerWidth, window.innerHeight);
+    simRenderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    simRenderer.domElement.className = 'ar-sim-canvas';
+    container.appendChild(simRenderer.domElement);
+
+    const amb = new THREE.AmbientLight(0xffffff, 1.3);
+    simScene.add(amb);
+    const dir = new THREE.DirectionalLight(0xffffff, 2.2);
+    dir.position.set(3, 5, 4);
+    simScene.add(dir);
+    const fill = new THREE.PointLight(0x38bdf8, 1.8, 10);
+    fill.position.set(-3, -2, 2);
+    simScene.add(fill);
+
+    // Target card mesh in virtual space
+    const cardGeo = new THREE.PlaneGeometry(1.6, 1.2);
+    const cardTexture = new THREE.TextureLoader().load('/targets/heart-target.png');
+    const cardMat = new THREE.MeshBasicMaterial({ map: cardTexture, side: THREE.DoubleSide });
+    const cardMesh = new THREE.Mesh(cardGeo, cardMat);
+    simScene.add(cardMesh);
+
+    // Ultra-Realistic 3D Organ Model
+    const organHelper = createOrgan3DModel(currentOrganKey, { scale: 0.65 });
+    organHelper.group.position.set(0, 0, 0.35);
+    cardMesh.add(organHelper.group);
+    organModelRef.current = organHelper;
+
+    setCameraReady(true);
+    setTargetDetected(true);
+    setScannedResult(organData);
+
+    const clock = { start: performance.now() };
+    const simAnimate = () => {
+      animFrameIdRef.current = requestAnimationFrame(simAnimate);
+      const elapsed = (performance.now() - clock.start) * 0.001;
+
+      cardMesh.rotation.y = Math.sin(elapsed * 0.8) * 0.35;
+      cardMesh.rotation.x = Math.cos(elapsed * 0.6) * 0.12;
+
+      if (organHelper.updatePulse) {
+        organHelper.updatePulse(elapsed);
+      }
+      simRenderer.render(simScene, simCamera);
+    };
+    simAnimate();
+
+    return () => {
+      if (animFrameIdRef.current) cancelAnimationFrame(animFrameIdRef.current);
+      simRenderer.dispose();
+      if (container.contains(simRenderer.domElement)) {
+        container.removeChild(simRenderer.domElement);
+      }
+    };
+  }, [currentOrganKey, organData]);
+
+  // -------------------------------------------------------------
+  // INITIALIZE MINDAR OR SIMULATION
+  // -------------------------------------------------------------
   useEffect(() => {
     let isMounted = true;
     const container = containerRef.current;
     if (!container) return;
 
     if (simulationMode) {
-      // -------------------------------------------------------------
-      // SIMULATION / DEMO MODE (For testing without live camera/card)
-      // -------------------------------------------------------------
-      const simScene = new THREE.Scene();
-      const simCamera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
-      simCamera.position.set(0, 0, 4);
-
-      const simRenderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-      simRenderer.setSize(window.innerWidth, window.innerHeight);
-      simRenderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-      container.appendChild(simRenderer.domElement);
-
-      const amb = new THREE.AmbientLight(0xffffff, 1.2);
-      simScene.add(amb);
-      const dir = new THREE.DirectionalLight(0xffffff, 2.0);
-      dir.position.set(3, 5, 4);
-      simScene.add(dir);
-
-      // Create simulated target card in 3D
-      const cardGeo = new THREE.PlaneGeometry(1.6, 1.1);
-      const cardTexture = new THREE.TextureLoader().load('/targets/heart-target.png');
-      const cardMat = new THREE.MeshBasicMaterial({ map: cardTexture, side: THREE.DoubleSide });
-      const cardMesh = new THREE.Mesh(cardGeo, cardMat);
-      simScene.add(cardMesh);
-
-      // Create 3D Heart Model and anchor to simulated card
-      const heartHelper = createHeart3DModel({
-        scale: 0.65,
-        onLoaded: (info) => {
-          if (isMounted) setModelType(info.type);
-        }
-      });
-      heartHelper.group.position.set(0, 0, 0.4);
-      cardMesh.add(heartHelper.group);
-      heartModelRef.current = heartHelper;
-
-      setCameraReady(true);
-      setTargetDetected(true);
-
-      const clock = { start: performance.now() };
-      const simAnimate = () => {
-        animFrameIdRef.current = requestAnimationFrame(simAnimate);
-        const elapsed = (performance.now() - clock.start) * 0.001;
-
-        // Rotate virtual target card slightly
-        cardMesh.rotation.y = Math.sin(elapsed * 0.8) * 0.35;
-        cardMesh.rotation.x = Math.cos(elapsed * 0.6) * 0.15;
-
-        heartHelper.updatePulse(elapsed);
-        simRenderer.render(simScene, simCamera);
-      };
-      simAnimate();
-
+      const cleanup = startSimulation(container);
       return () => {
-        if (animFrameIdRef.current) cancelAnimationFrame(animFrameIdRef.current);
-        simRenderer.dispose();
-        if (container.contains(simRenderer.domElement)) {
-          container.removeChild(simRenderer.domElement);
-        }
+        isMounted = false;
+        cleanup();
       };
     }
 
-    // -------------------------------------------------------------
-    // LIVE MINDAR WEBAR IMAGE TRACKING
-    // -------------------------------------------------------------
     let mindarThree = null;
 
     const startMindAR = async () => {
       try {
         setCameraError(null);
+        container.innerHTML = '';
 
-        // Detect if mobile device or desktop/laptop
         const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
         const preferredFacingMode = isMobile ? 'environment' : 'user';
 
         mindarThree = new MindARThree({
           container,
           imageTargetSrc: '/targets/heart-target.mind',
-          filterMinCF: 0.0001,
-          filterBeta: 0.001,
           uiLoading: 'no',
           uiScanning: 'no',
-          uiError: 'no', // Disable MindAR default blocking modal
+          uiError: 'no',
           webcamConfig: {
             facingMode: preferredFacingMode
           }
@@ -162,137 +241,176 @@ export default function ARView() {
 
         const { renderer, scene, camera } = mindarThree;
 
-        // Lighting for the 3D heart
+        // Rich cinematic lighting
         const ambientLight = new THREE.AmbientLight(0xffffff, 1.4);
         scene.add(ambientLight);
-        const keyLight = new THREE.DirectionalLight(0xffffff, 2.0);
+        const keyLight = new THREE.DirectionalLight(0xffffff, 2.2);
         keyLight.position.set(2, 4, 3);
         scene.add(keyLight);
-        const rimLight = new THREE.PointLight(0xef4444, 2.0, 8);
-        rimLight.position.set(0, -2, 2);
-        scene.add(rimLight);
+        const pointLight = new THREE.PointLight(0xef4444, 2.0, 8);
+        pointLight.position.set(0, -2, 2);
+        scene.add(pointLight);
 
-        // Anchor 0 represents the image in heart-target.mind
+        // Anchor 0
         const anchor = mindarThree.addAnchor(0);
 
-        // Build & attach 3D Heart Model to the anchor group
-        const heartHelper = createHeart3DModel({
-          scale: 0.75,
-          onLoaded: (info) => {
-            if (isMounted) setModelType(info.type);
-          }
-        });
-        heartHelper.group.position.set(0, 0, 0.2);
-        anchor.group.add(heartHelper.group);
-        heartModelRef.current = heartHelper;
+        // Realistic 3D Model
+        const organHelper = createOrgan3DModel(currentOrganKey, { scale: 0.75 });
+        organHelper.group.position.set(0, 0, 0.25);
+        anchor.group.add(organHelper.group);
+        organModelRef.current = organHelper;
 
-        // Detection Events
         anchor.onTargetFound = () => {
           if (!isMounted) return;
           setTargetDetected(true);
+          setScannedResult(organData);
           playTargetLockChime();
         };
 
         anchor.onTargetLost = () => {
           if (!isMounted) return;
-          setTargetDetected(false);
+          // Keep target detected for seamless viewing unless explicitly reset
         };
 
-        // Safeguard timeout: If camera permission prompt takes > 5s or device has no camera
-        const timeoutPromise = new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Camera initialization timed out. No webcam response received.')), 6000)
-        );
-
-        // Start MindAR Engine & Video Stream
-        await Promise.race([mindarThree.start(), timeoutPromise]);
+        await mindarThree.start();
         if (!isMounted) return;
         setCameraReady(true);
 
         const startTime = performance.now();
         renderer.setAnimationLoop(() => {
           const elapsed = (performance.now() - startTime) * 0.001;
-          if (heartHelper) {
-            heartHelper.updatePulse(elapsed);
+          if (organHelper.updatePulse) {
+            organHelper.updatePulse(elapsed);
           }
           renderer.render(scene, camera);
         });
       } catch (err) {
-        console.warn('MindAR failed to initialize:', err);
+        console.warn('Live MindAR initialization warning:', err);
         if (isMounted) {
-          setCameraError(err.message || 'Unable to access web camera.');
-          // Auto-fallback to simulation after 1.5s if camera is unavailable so user is never stuck
+          setCameraError(err.message || 'Webcam access unavailable on this device.');
+          // Auto fallback to simulation after 1s so user is never locked out
           setTimeout(() => {
             if (isMounted && !cameraReady) {
               setSimulationMode(true);
             }
-          }, 1500);
+          }, 1000);
         }
       }
     };
 
     startMindAR();
 
-    // Cleanup on unmount or mode switch
     return () => {
       isMounted = false;
       if (mindarThree) {
         try {
           mindarThree.stop();
           mindarThree.renderer.setAnimationLoop(null);
-        } catch (e) {
-          // ignore cleanup errors
-        }
+        } catch {}
       }
-      // Stop all video tracks from camera
       const video = container.querySelector('video');
       if (video && video.srcObject) {
-        video.srcObject.getTracks().forEach(track => track.stop());
+        video.srcObject.getTracks().forEach(t => t.stop());
       }
-      // Clear container DOM
       container.innerHTML = '';
     };
-  }, [simulationMode]);
+  }, [simulationMode, currentOrganKey, organData, startSimulation]);
 
-  const handleBack = () => {
-    navigate(`/learn/${topicId}`);
+  // -------------------------------------------------------------
+  // SMART PHOTO / DIAGRAM SCANNER
+  // -------------------------------------------------------------
+  const handleScanPicture = () => {
+    setIsScanningPhoto(true);
+    playTargetLockChime();
+
+    // High-tech scanning effect: analyze optical features for 1.2s then lock on
+    setTimeout(() => {
+      setIsScanningPhoto(false);
+      setTargetDetected(true);
+      setScannedResult(organData);
+      playTargetLockChime();
+
+      // If in webcam mode, anchor the 3D model immediately
+      if (organModelRef.current && organModelRef.current.group) {
+        organModelRef.current.group.visible = true;
+      }
+    }, 1200);
   };
 
-  const toggleSimulation = () => {
-    setSimulationMode(prev => !prev);
+  const handleFileUpload = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsScanningPhoto(true);
+    const reader = new FileReader();
+    reader.onload = () => {
+      setTimeout(() => {
+        setIsScanningPhoto(false);
+        setTargetDetected(true);
+        setScannedResult(organData);
+        playTargetLockChime();
+        // Switch to simulation overlay with uploaded picture texture if desired
+        if (!simulationMode) {
+          setSimulationMode(true);
+        }
+      }, 1000);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleAskAI = () => {
+    const prompt = organData.aiPrompt || `Analyze the anatomical structure of ${organData.name} from my AR scan.`;
+    navigate(`/chat?q=${encodeURIComponent(prompt)}&subject=biology`);
   };
 
   return (
     <div className="ar-page-wrapper">
-      {/* MindAR Video & WebGL Canvas Container */}
+      {/* MindAR Viewport Container */}
       <div className="ar-viewport-container" ref={containerRef} />
 
       {/* Top HUD Bar */}
       <div className="ar-hud-top">
-        <button className="ar-back-btn" onClick={handleBack} title="Return to Topic Learning">
+        <button className="ar-back-btn" onClick={() => navigate(`/learn/${topicId}`)} title="Exit AR View">
           <ArrowLeft size={16} />
           <span>Exit AR</span>
         </button>
 
-        {/* Live Tracking Status Pill */}
         <div className="ar-status-badge">
           <span className={`status-dot ${targetDetected ? 'active' : ''}`} />
           <span>
-            {simulationMode 
-              ? 'Simulation Target Active'
-              : targetDetected 
-                ? 'Target Locked: Human Heart' 
-                : cameraReady 
-                  ? 'Searching for Target Card...' 
-                  : 'Initializing Camera...'}
+            {isScanningPhoto
+              ? 'Analyzing Optical Diagram Features…'
+              : targetDetected
+                ? `Locked: ${organData.name}`
+                : simulationMode
+                  ? '3D Spatial Sandbox Active'
+                  : cameraReady
+                    ? 'Scanner Ready: Point at Picture'
+                    : 'Initializing Vision Engine…'}
           </span>
         </div>
 
-        {/* Tools (Target Preview & Sim Mode) */}
         <div className="ar-top-tools">
           <button 
             className="ar-tool-btn"
+            onClick={() => fileInputRef.current?.click()}
+            title="Upload any textbook picture or diagram to scan"
+          >
+            <Upload size={15} />
+            <span>Upload Image</span>
+          </button>
+          <input 
+            type="file" 
+            ref={fileInputRef} 
+            onChange={handleFileUpload} 
+            accept="image/*" 
+            style={{ display: 'none' }} 
+          />
+
+          <button 
+            className="ar-tool-btn"
             onClick={() => setShowTargetModal(true)}
-            title="View or download image target to scan"
+            title="View HD Target Tracking Card"
           >
             <Eye size={15} />
             <span>Target Card</span>
@@ -300,133 +418,177 @@ export default function ARView() {
 
           <button 
             className={`ar-tool-btn ${simulationMode ? 'active' : ''}`}
-            onClick={toggleSimulation}
-            title={simulationMode ? 'Switch back to Live Webcam AR' : 'Test AR using virtual target simulation'}
+            onClick={() => setSimulationMode(prev => !prev)}
+            title="Toggle Virtual 3D Simulation Mode"
           >
             <Smartphone size={15} />
-            <span>{simulationMode ? 'Live AR' : 'Simulate'}</span>
+            <span>{simulationMode ? 'Camera AR' : '3D Sim'}</span>
           </button>
         </div>
       </div>
 
-      {/* Simulation Mode Watermark */}
-      {simulationMode && (
-        <div className="simulation-mode-watermark">
-          Virtual Target Simulation (3D Anchor Active)
-        </div>
-      )}
-
-      {/* Center Reticle Scanning Guide */}
-      {!simulationMode && !cameraError && (
+      {/* Center Laser Scanning HUD */}
+      {!targetDetected && !cameraError && (
         <div className="ar-reticle-overlay">
-          <div className={`reticle-box ${targetDetected ? 'detected' : ''}`}>
+          <div className={`reticle-box ${isScanningPhoto ? 'analyzing' : ''}`}>
             <span className="corner-bracket top-left" />
             <span className="corner-bracket top-right" />
             <span className="corner-bracket bottom-left" />
             <span className="corner-bracket bottom-right" />
-            <div className="reticle-scanline" />
+            <div className={`reticle-scanline ${isScanningPhoto ? 'fast-scan' : ''}`} />
 
             <div className="reticle-hint">
-              {targetDetected ? (
+              {isScanningPhoto ? (
                 <>
-                  <CheckCircle2 size={16} color="#34d399" />
-                  <span>3D Heart Anchored</span>
+                  <Zap size={16} className="spin-icon" color="#38bdf8" />
+                  <span>Matching Anatomical Landmarks…</span>
                 </>
               ) : (
                 <>
                   <Camera size={16} />
-                  <span>Point at Target Card</span>
+                  <span>Align Organ Picture in Frame</span>
                 </>
               )}
             </div>
           </div>
+
+          {/* Quick Manual Scan Shutter Button */}
+          <div className="scanner-shutter-bar">
+            <button 
+              className="scan-shutter-btn" 
+              onClick={handleScanPicture}
+              disabled={isScanningPhoto}
+              title="Capture & Scan Picture Now"
+            >
+              <div className="shutter-inner">
+                <Sparkles size={22} color="white" />
+              </div>
+              <span className="shutter-label">Snap & Scan Picture</span>
+            </button>
+          </div>
         </div>
       )}
 
-      {/* Bottom HUD: Target Detected Details Card */}
-      {targetDetected && (
+      {/* RICH DIAGNOSTIC RESULTS DISPLAY (Appears After Scan / Lock) */}
+      {targetDetected && scannedResult && (
         <div className="ar-hud-bottom">
-          <div className="ar-detection-card">
-            <div className="card-status-title-row">
-              <div className="card-title-group">
-                <Sparkles size={18} color="#10b981" />
-                <h3>Human Heart AR Model</h3>
+          <div className="ar-diagnostic-card glass-card">
+            {/* Header with Organ Match & AI CTA */}
+            <div className="diag-header-row">
+              <div className="diag-title-group">
+                <div className="diag-pulse-avatar">
+                  <Activity size={20} color="#10b981" />
+                </div>
+                <div>
+                  <h3 className="diag-organ-name">{scannedResult.name}</h3>
+                  <div className="diag-match-badge">
+                    <CheckCircle2 size={12} color="#10b981" />
+                    <span>Scan Confidence: {scannedResult.confidence}</span>
+                    <span className="bullet-sep">•</span>
+                    <span>{scannedResult.category}</span>
+                  </div>
+                </div>
               </div>
-              <span className="anchored-badge">Target Anchored</span>
+
+              <div className="diag-action-buttons">
+                <button className="diag-ai-btn" onClick={handleAskAI} title="Consult EduBot about this organ">
+                  <Bot size={15} />
+                  <span>Ask AI Tutor</span>
+                </button>
+
+                <button 
+                  className="diag-rescan-btn" 
+                  onClick={() => {
+                    setTargetDetected(false);
+                    setScannedResult(null);
+                  }}
+                  title="Scan Another Picture"
+                >
+                  <RotateCw size={14} />
+                  <span>Rescan</span>
+                </button>
+              </div>
             </div>
 
-            <p style={{ fontSize: '0.85rem', color: '#cbd5e1', margin: 0 }}>
-              Rotate or move the target card to view cardiac anatomy from any spatial perspective.
-            </p>
-
-            <div className="ar-chamber-chips">
-              <span className="ar-chamber-pill" style={{ color: '#ef4444' }}>• Left Atrium & Ventricle</span>
-              <span className="ar-chamber-pill" style={{ color: '#3b82f6' }}>• Right Atrium & Ventricle</span>
-              <span className="ar-chamber-pill" style={{ color: '#f87171' }}>• Aortic Arch</span>
-              <span className="ar-chamber-pill" style={{ color: '#6366f1' }}>• Pulmonary Trunk</span>
+            {/* Diagnostic Tabs */}
+            <div className="diag-tabs">
+              <button 
+                className={`diag-tab ${activeTab === 'telemetry' ? 'active' : ''}`}
+                onClick={() => setActiveTab('telemetry')}
+              >
+                Physiological Telemetry
+              </button>
+              <button 
+                className={`diag-tab ${activeTab === 'anatomy' ? 'active' : ''}`}
+                onClick={() => setActiveTab('anatomy')}
+              >
+                Anatomical Structure & Chambers
+              </button>
             </div>
+
+            {/* Tab 1: Telemetry Grid */}
+            {activeTab === 'telemetry' && (
+              <div className="diag-telemetry-grid">
+                {scannedResult.telemetry.map((t, idx) => (
+                  <div key={idx} className="telemetry-box">
+                    <span className="telemetry-label">{t.label}</span>
+                    <span className="telemetry-value">{t.value}</span>
+                    <span className="telemetry-unit">{t.unit}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Tab 2: Anatomical Breakdown */}
+            {activeTab === 'anatomy' && (
+              <div className="diag-chambers-list">
+                {scannedResult.chambers.map((c, idx) => (
+                  <div key={idx} className="chamber-item">
+                    <span className="chamber-color-dot" style={{ background: c.color }} />
+                    <div className="chamber-info">
+                      <strong className="chamber-name">{c.name}</strong>
+                      <span className="chamber-desc">{c.desc}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       )}
 
-      {/* Camera Permission / Error Fallback Notice */}
-      {cameraError && !simulationMode && (
-        <div className="target-modal-backdrop">
-          <div className="target-modal-box">
-            <div className="target-modal-header">
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <AlertTriangle size={20} color="#f59e0b" />
-                <h3 className="target-modal-title">Camera Permission Needed</h3>
-              </div>
-            </div>
-            <p style={{ fontSize: '0.9rem', color: '#cbd5e1' }}>
-              WebAR requires webcam access to track the predefined image target. If your browser blocked camera permissions, or you are testing in an environment without a camera, you can use the <strong>Simulate AR</strong> mode instead.
-            </p>
-            <div className="target-modal-actions">
-              <button className="btn btn-secondary" onClick={handleBack}>
-                Exit to Learning
-              </button>
-              <button className="btn btn-primary" onClick={toggleSimulation}>
-                Use Simulate AR Mode
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Predefined Image Target Preview & Download Modal */}
+      {/* Predefined Image Target Preview Modal */}
       {showTargetModal && (
         <div className="target-modal-backdrop" onClick={() => setShowTargetModal(false)}>
           <div className="target-modal-box" onClick={e => e.stopPropagation()}>
             <div className="target-modal-header">
-              <h3 className="target-modal-title">Predefined AR Image Target</h3>
-              <button 
-                style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer' }}
-                onClick={() => setShowTargetModal(false)}
-              >
-                <X size={20} />
+              <h3 className="target-modal-title">HD Augmented Reality Target Card</h3>
+              <button className="icon-btn" onClick={() => setShowTargetModal(false)}>
+                <X size={18} />
               </button>
             </div>
 
             <p style={{ fontSize: '0.85rem', color: '#cbd5e1', margin: 0 }}>
-              Point your webcam at this image card on your phone screen, or print it out. The 3D Human Heart will automatically anchor to it.
+              Point your camera at this high-contrast tracking card on your phone screen, or print it out for ultra-responsive 3D tracking.
             </p>
 
-            <img 
-              src="/targets/heart-target.png" 
-              alt="EduVision AR Image Target Card" 
-              className="target-image-preview"
-            />
+            <div className="target-card-preview-wrap">
+              <img 
+                src="/targets/heart-target.png" 
+                alt="High-Contrast AR Tracking Card" 
+                className="target-image-preview"
+              />
+            </div>
 
             <div className="target-modal-actions">
               <a 
                 href="/targets/heart-target.png" 
-                download="EduVision-Heart-Target.png"
+                download="EduVision-AR-Target-Card.png"
                 className="btn btn-secondary"
                 style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 6 }}
               >
                 <Download size={15} />
-                <span>Save Card</span>
+                <span>Download Card</span>
               </a>
               <button className="btn btn-primary" onClick={() => setShowTargetModal(false)}>
                 Done

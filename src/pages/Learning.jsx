@@ -25,6 +25,7 @@ import {
 import { TOPICS } from '../data/learningData';
 import ActionModal from '../components/ActionModal';
 import HeartModelViewer from '../components/HeartModelViewer';
+import GeneralOrganViewer from '../components/GeneralOrganViewer';
 import { CHAMBER_DATA } from '../data/heartData';
 import './Learning.css';
 
@@ -154,37 +155,10 @@ export default function Learning() {
                 onSelectChamber={setActiveChamber} 
               />
             ) : (
-              <div className="viewport-canvas">
-                <div className="canvas-grid-lines"></div>
-
-                {/* Simulated 3D Model Visualization */}
-                <div 
-                  className="model-simulation-stage"
-                  style={{ transform: `rotateY(${rotationAngle}deg)` }}
-                >
-                  <div className="wireframe-ring ring-outer"></div>
-                  <div className="wireframe-ring ring-inner"></div>
-                  
-                  <div className="model-center-orb">
-                    <Box size={56} className="orb-icon" />
-                    <span className="model-orb-label">{currentTopic.title}</span>
-                    <span className="model-orb-sub">Ready for Three.js GLTF</span>
-                  </div>
-
-                  <div className="anchor-point point-top" title="Anterior View"></div>
-                  <div className="anchor-point point-right" title="Lateral View"></div>
-                  <div className="anchor-point point-bottom" title="Cross Section"></div>
-                </div>
-
-                <div className="viewport-overlay-bottom">
-                  <div className="viewport-fps-chip">
-                    <span>60 FPS Target</span>
-                  </div>
-                  <div className="viewport-instructions">
-                    <span>OrbitControls: Left-click drag to rotate • Scroll to zoom</span>
-                  </div>
-                </div>
-              </div>
+              <GeneralOrganViewer 
+                topicId={currentTopic.id} 
+                title={currentTopic.title} 
+              />
             )}
 
             {/* Viewport Action Toolbar (The 4 Requested Buttons) */}

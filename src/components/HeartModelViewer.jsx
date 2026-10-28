@@ -14,6 +14,7 @@ import {
   Maximize2
 } from 'lucide-react';
 import { CHAMBER_DATA } from '../data/heartData';
+import { createRealisticHeartModel } from '../utils/organ3DModels';
 import './HeartModelViewer.css';
 
 export default function HeartModelViewer({ activeChamber, onSelectChamber }) {
@@ -106,115 +107,11 @@ export default function HeartModelViewer({ activeChamber, onSelectChamber }) {
     scene.add(heartGroup);
     heartGroupRef.current = heartGroup;
 
-    // Helper: Build procedural 3D heart placeholder
+    // Helper: Build ultra-realistic sculpted anatomical 3D heart
     const buildProceduralHeart = () => {
-      const chamberMeshes = {};
-
-      // Common materials
-      const createChamberMaterial = (colorHex, roughness = 0.35) => {
-        return new THREE.MeshStandardMaterial({
-          color: new THREE.Color(colorHex),
-          roughness,
-          metalness: 0.1,
-          emissive: new THREE.Color(colorHex),
-          emissiveIntensity: 0.08
-        });
-      };
-
-      // 1. Left Ventricle (Largest muscular apex cone/oval)
-      const lvGeo = new THREE.SphereGeometry(0.72, 32, 32);
-      lvGeo.scale(0.8, 1.2, 0.85);
-      const lvMat = createChamberMaterial(0xef4444);
-      const lvMesh = new THREE.Mesh(lvGeo, lvMat);
-      lvMesh.position.set(0.35, -0.45, 0.15);
-      lvMesh.rotation.z = -0.22;
-      heartGroup.add(lvMesh);
-      chamberMeshes['left-ventricle'] = lvMesh;
-
-      // 2. Right Ventricle (Lower right, slightly more anterior)
-      const rvGeo = new THREE.SphereGeometry(0.64, 32, 32);
-      rvGeo.scale(0.85, 1.05, 0.8);
-      const rvMat = createChamberMaterial(0x3b82f6);
-      const rvMesh = new THREE.Mesh(rvGeo, rvMat);
-      rvMesh.position.set(-0.45, -0.35, 0.35);
-      rvMesh.rotation.z = 0.18;
-      heartGroup.add(rvMesh);
-      chamberMeshes['right-ventricle'] = rvMesh;
-
-      // 3. Left Atrium (Upper chamber, posterior-left)
-      const laGeo = new THREE.SphereGeometry(0.52, 28, 28);
-      laGeo.scale(0.9, 0.8, 0.95);
-      const laMat = createChamberMaterial(0xdc2626);
-      const laMesh = new THREE.Mesh(laGeo, laMat);
-      laMesh.position.set(0.48, 0.42, -0.15);
-      heartGroup.add(laMesh);
-      chamberMeshes['left-atrium'] = laMesh;
-
-      // 4. Right Atrium (Upper right chamber)
-      const raGeo = new THREE.SphereGeometry(0.56, 28, 28);
-      raGeo.scale(0.95, 0.85, 0.9);
-      const raMat = createChamberMaterial(0x2563eb);
-      const raMesh = new THREE.Mesh(raGeo, raMat);
-      raMesh.position.set(-0.55, 0.38, 0.2);
-      heartGroup.add(raMesh);
-      chamberMeshes['right-atrium'] = raMesh;
-
-      // 5. Aorta (Main arching arterial tube from LV over the top)
-      const aortaCurve = new THREE.CatmullRomCurve3([
-        new THREE.Vector3(0.15, 0.3, 0.05),
-        new THREE.Vector3(0.1, 0.9, 0.1),
-        new THREE.Vector3(-0.05, 1.25, 0.0),
-        new THREE.Vector3(-0.4, 1.15, -0.2),
-        new THREE.Vector3(-0.5, 0.7, -0.3)
-      ]);
-      const aortaGeo = new THREE.TubeGeometry(aortaCurve, 24, 0.18, 16, false);
-      const aortaMat = new THREE.MeshStandardMaterial({
-        color: 0xf87171,
-        roughness: 0.3,
-        metalness: 0.15
-      });
-      const aortaMesh = new THREE.Mesh(aortaGeo, aortaMat);
-      heartGroup.add(aortaMesh);
-
-      // Aorta Branch Arteries (Brachiocephalic, Carotid, Subclavian)
-      [-0.15, 0.0, 0.15].forEach((xOffset, idx) => {
-        const branchGeo = new THREE.CylinderGeometry(0.045, 0.05, 0.35, 12);
-        const branchMesh = new THREE.Mesh(branchGeo, aortaMat);
-        branchMesh.position.set(xOffset, 1.35 + (idx === 1 ? 0.05 : 0), -0.05);
-        branchMesh.rotation.z = (idx - 1) * -0.15;
-        heartGroup.add(branchMesh);
-      });
-
-      // 6. Superior Vena Cava (Top venous cylinder into Right Atrium)
-      const svcGeo = new THREE.CylinderGeometry(0.14, 0.15, 0.8, 16);
-      const svcMat = new THREE.MeshStandardMaterial({
-        color: 0x1d4ed8,
-        roughness: 0.4
-      });
-      const svcMesh = new THREE.Mesh(svcGeo, svcMat);
-      svcMesh.position.set(-0.58, 0.95, 0.1);
-      heartGroup.add(svcMesh);
-
-      // 7. Pulmonary Artery Trunk (Crossing under Aorta to lungs)
-      const paCurve = new THREE.CatmullRomCurve3([
-        new THREE.Vector3(-0.2, 0.1, 0.45),
-        new THREE.Vector3(-0.1, 0.55, 0.3),
-        new THREE.Vector3(0.2, 0.75, 0.05),
-        new THREE.Vector3(0.45, 0.8, -0.25)
-      ]);
-      const paGeo = new THREE.TubeGeometry(paCurve, 20, 0.16, 16, false);
-      const paMat = new THREE.MeshStandardMaterial({
-        color: 0x6366f1,
-        roughness: 0.35
-      });
-      const paMesh = new THREE.Mesh(paGeo, paMat);
-      heartGroup.add(paMesh);
-
-      // Subtle tilt to natural anatomical cardiac axis (45° forward-left)
-      heartGroup.rotation.y = 0.25;
-      heartGroup.rotation.x = 0.15;
-
-      chamberMeshesRef.current = chamberMeshes;
+      const realisticHeart = createRealisticHeartModel(1.0);
+      heartGroup.add(realisticHeart.group);
+      chamberMeshesRef.current = realisticHeart.chambers;
     };
 
     // 6. Attempt to load GLB/GLTF from /models/heart.glb

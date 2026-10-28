@@ -93,11 +93,9 @@ export default function Home() {
                 
                 {/* 3D Model Focal Simulation */}
                 <div className="spatial-model-core">
-                  <div className="core-icon-pulse">
-                    <Dna size={48} className="core-icon" />
-                  </div>
+                  <img src="/images/human-heart.jpg" alt="Realistic 3D Human Heart" className="hero-organ-img" />
                   <div className="core-label">Human Heart & Vascular Tree</div>
-                  <div className="core-tag">Realtime Mesh Preview</div>
+                  <div className="core-tag">Photorealistic 3D Model</div>
                 </div>
 
                 <div className="mockup-floating-tag tag-ar">
