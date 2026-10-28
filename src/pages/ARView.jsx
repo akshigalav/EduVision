@@ -287,8 +287,14 @@ export default function ARView() {
       } catch (err) {
         console.warn('Live MindAR initialization warning:', err);
         if (isMounted) {
-          setCameraError(err.message || 'Webcam access unavailable on this device.');
-          // Auto fallback to simulation after 1s so user is never locked out
+          const rawMsg = err?.message || (typeof err === 'string' ? err : '');
+          const isDeviceInUse = rawMsg.includes('Device in use') || rawMsg.includes('NotReadableError');
+          const finalMsg = isDeviceInUse
+            ? 'Your camera is currently in use by another app or browser tab (e.g. Google Meet, Zoom, or Teams). Turn off camera in the other tab or use 3D Sandbox mode below.'
+            : (rawMsg || 'Webcam access unavailable or permissions blocked.');
+
+          setCameraError(finalMsg);
+          // Auto switch to interactive 3D simulation mode so user is never stuck
           setTimeout(() => {
             if (isMounted && !cameraReady) {
               setSimulationMode(true);
@@ -592,6 +598,36 @@ export default function ARView() {
               </a>
               <button className="btn btn-primary" onClick={() => setShowTargetModal(false)}>
                 Done
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Camera Permission / Device In Use Fallback Notice */}
+      {cameraError && !simulationMode && (
+        <div className="target-modal-backdrop">
+          <div className="target-modal-box">
+            <div className="target-modal-header">
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <AlertTriangle size={20} color="#f59e0b" />
+                <h3 className="target-modal-title">Camera Notice</h3>
+              </div>
+            </div>
+            <p style={{ fontSize: '0.9rem', color: '#cbd5e1', lineHeight: 1.5 }}>
+              {cameraError}
+            </p>
+            <div className="target-modal-actions">
+              <button className="btn btn-secondary" onClick={() => navigate(`/learn/${topicId}`)}>
+                Exit to Learning
+              </button>
+              <button 
+                className="btn btn-primary" 
+                onClick={() => {
+                  setCameraError(null);
+                  setSimulationMode(true);
+                }}
+              >
+                Use 3D Sandbox Mode
               </button>
             </div>
           </div>
