@@ -369,3 +369,25 @@
   color: #6ee7b7;
   transform: translateY(-2px);
 }
+
+.topic-quiz-link-chip {
+  background: rgba(245, 158, 11, 0.2) !important;
+  border: 1px solid rgba(245, 158, 11, 0.4) !important;
+  color: #fbbf24 !important;
+  padding: 0.2rem 0.55rem;
+  border-radius: 4px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.topic-quiz-link-chip:hover {
+  background: rgba(245, 158, 11, 0.35) !important;
+  border-color: #f59e0b !important;
+  color: #fef3c7 !important;
+  transform: translateY(-1px);
+}

@@ -171,7 +171,9 @@ export default function Topics() {
                   <span title="3D Model Ready">3D</span>
                   <span title="AR Compatible">AR</span>
                   <span title="AI Tutor Ready">AI</span>
-                  <span title="Quiz Ready">Quiz</span>
+                  <Link to={`/learn/${topic.id}?quiz=1`} className="topic-quiz-link-chip" title="Take 5-Question Quiz">
+                    Quiz
+                  </Link>
                 </div>
 
                 <div className="topic-action-buttons">

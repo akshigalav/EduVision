@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useParams, Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { 
   ArrowLeft, 
   Box, 
@@ -28,6 +28,7 @@ import { TOPICS } from '../data/learningData';
 import ActionModal from '../components/ActionModal';
 import GeneralOrganViewer from '../components/GeneralOrganViewer';
 import { MODEL_COMPONENTS_DATA } from '../data/modelComponentsData';
+import QuizModal from '../components/QuizModal';
 import './Learning.css';
 
 /**
@@ -50,9 +51,19 @@ export default function Learning() {
   const topicComponentsData = MODEL_COMPONENTS_DATA[currentTopic.id] || MODEL_COMPONENTS_DATA['human-heart'];
   const componentsList = topicComponentsData?.components || [];
 
+  const [searchParams] = useSearchParams();
+
   // State for interactive modals
   const [modalOpen, setModalOpen] = useState(false);
+  const [quizModalOpen, setQuizModalOpen] = useState(false);
   const [activeAction, setActiveAction] = useState('3d');
+
+  // Auto-launch quiz if ?quiz=1 in URL
+  useEffect(() => {
+    if (searchParams.get('quiz') === '1') {
+      setQuizModalOpen(true);
+    }
+  }, [searchParams]);
 
   // Active component selection for 3D model inspection
   const [activeComponent, setActiveComponent] = useState(null);
@@ -64,6 +75,7 @@ export default function Learning() {
 
   const handleActionClick = (actionType) => {
     if (actionType === "ai") { handleAskAI(); return; }
+    if (actionType === "quiz") { setQuizModalOpen(true); return; }
     setActiveAction(actionType);
     setModalOpen(true);
   };
@@ -363,7 +375,19 @@ export default function Learning() {
         isOpen={modalOpen} 
         onClose={closeModal} 
         actionType={activeAction} 
-        topicTitle={currentTopic.title} 
+        topicTitle={currentTopic.title}
+        onStartQuiz={() => {
+          closeModal();
+          setQuizModalOpen(true);
+        }}
+      />
+
+      {/* Complete Assessment Quiz Engine Modal */}
+      <QuizModal 
+        isOpen={quizModalOpen}
+        onClose={() => setQuizModalOpen(false)}
+        topicId={currentTopic.id}
+        topicTitle={currentTopic.title}
       />
     </div>
   );

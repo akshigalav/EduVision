@@ -8,7 +8,7 @@ import './ActionModal.css';
  * Provides interactive feedback for features:
  * "View 3D Model", "Try AR", "Ask AI", and "Take Quiz".
  */
-export default function ActionModal({ isOpen, onClose, actionType, topicTitle }) {
+export default function ActionModal({ isOpen, onClose, actionType, topicTitle, onStartQuiz }) {
   if (!isOpen) return null;
 
   // Content configuration based on actionType
@@ -147,6 +147,19 @@ export default function ActionModal({ isOpen, onClose, actionType, topicTitle })
               <Bot size={16} />
               <span>Launch AI Smart Tutor</span>
             </Link>
+          )}
+          {actionType === 'quiz' && (
+            <button 
+              className="btn btn-primary"
+              onClick={() => {
+                onClose();
+                if (onStartQuiz) onStartQuiz();
+              }}
+              style={{ backgroundColor: '#f59e0b', color: '#fff', display: 'flex', alignItems: 'center', gap: '0.4rem' }}
+            >
+              <HelpCircle size={16} />
+              <span>Start Interactive Quiz</span>
+            </button>
           )}
         </div>
       </div>
