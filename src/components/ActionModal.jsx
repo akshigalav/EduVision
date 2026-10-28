@@ -27,7 +27,7 @@ export default function ActionModal({ isOpen, onClose, actionType, topicTitle })
             'Raycasting to inspect and dissect specific anatomical layers',
             'Smooth zoom and lighting customization'
           ],
-          statusText: 'Phase 2 implementation using Three.js and WebGL rendering.'
+          statusText: 'Active & Interactive: High-fidelity procedural 3D model with OrbitControls, X-ray wireframe, simulation speed, and layer dissection.'
         };
       case 'ar':
         return {

@@ -20,39 +20,42 @@ import {
   Activity,
   ArrowRight,
   ShieldAlert,
-  Flame
+  Flame,
+  Zap,
+  Target
 } from 'lucide-react';
 import { TOPICS } from '../data/learningData';
 import ActionModal from '../components/ActionModal';
-import HeartModelViewer from '../components/HeartModelViewer';
 import GeneralOrganViewer from '../components/GeneralOrganViewer';
-import { CHAMBER_DATA } from '../data/heartData';
+import { MODEL_COMPONENTS_DATA } from '../data/modelComponentsData';
 import './Learning.css';
 
 /**
  * Learning Page Component
- * The central spatial exploration interface.
- * Phase 2 includes an interactive 3D WebGL Three.js Human Heart model viewer,
- * camera controls (rotate, zoom, reset), and 4 anatomical chamber information panels.
+ * The central spatial exploration interface for EduVision AR.
+ * Features an interactive 3D WebGL Three.js spatial laboratory for ALL 15 curriculum models
+ * across Biology, Physics, Chemistry, Mathematics, and Computer Science,
+ * including component inspection, 3D hot-spot targeting, and direct AI Smart Tutor integration.
  */
 export default function Learning() {
   const { topicId = 'human-heart' } = useParams();
   const navigate = useNavigate();
 
-  // Find the selected topic across biology modules
+  // Find the selected topic across all curriculum subjects
   const allTopics = Object.values(TOPICS).flat();
   const currentTopic = allTopics.find(t => t.id === topicId) || allTopics[0];
   const parentSubjectId = Object.keys(TOPICS).find(k => TOPICS[k].some(t => t.id === currentTopic.id)) || "biology";
+
+  // Topic 3D Component Breakdown & Telemetry
+  const topicComponentsData = MODEL_COMPONENTS_DATA[currentTopic.id] || MODEL_COMPONENTS_DATA['human-heart'];
+  const componentsList = topicComponentsData?.components || [];
 
   // State for interactive modals
   const [modalOpen, setModalOpen] = useState(false);
   const [activeAction, setActiveAction] = useState('3d');
 
-  // Active chamber selection for 3D model inspection
-  const [activeChamber, setActiveChamber] = useState(null);
-
-  // Simulated rotation angle for topics without active 3D models yet
-  const [rotationAngle, setRotationAngle] = useState(45);
+  // Active component selection for 3D model inspection
+  const [activeComponent, setActiveComponent] = useState(null);
 
   const handleAskAI = (prompt) => {
     const q = prompt || currentTopic.aiPromptSuggestion || `Explain the core concepts of ${currentTopic.title}`;
@@ -69,11 +72,7 @@ export default function Learning() {
     setModalOpen(false);
   };
 
-  const handleRotatePreview = () => {
-    setRotationAngle(prev => (prev + 45) % 360);
-  };
-
-  const selectedChamberData = CHAMBER_DATA.find(c => c.id === activeChamber);
+  const selectedComponentData = componentsList.find(c => c.id === activeComponent);
 
   return (
     <div className="learning-page">
@@ -82,7 +81,7 @@ export default function Learning() {
         <div className="learning-breadcrumb">
           <Link to={`/topics/${parentSubjectId}`} className="back-link">
             <ArrowLeft size={16} />
-            <span>Back to Topics</span>
+            <span>Back to {parentSubjectId.charAt(0).toUpperCase() + parentSubjectId.slice(1)} Topics</span>
           </Link>
           <span className="breadcrumb-separator">/</span>
           <span className="breadcrumb-current">{currentTopic.title}</span>
@@ -94,7 +93,7 @@ export default function Learning() {
             <span className="badge badge-primary">{currentTopic.category}</span>
             <span className="badge badge-cyan">{currentTopic.modelType}</span>
             <span className="badge badge-emerald">
-              {currentTopic.id === 'human-heart' ? 'Phase 2: Live 3D Model' : 'Phase 1 Web Lab'}
+              Interactive 3D Spatial Lab
             </span>
           </div>
 
@@ -105,7 +104,7 @@ export default function Learning() {
         {/* Main Grid: 3D Viewport on Left, Details & Actions on Right */}
         <div className="learning-workspace-grid">
           {/* =========================================================================
-              3D MODEL VIEWPORT (Three.js on Human Heart)
+              3D MODEL VIEWPORT (Three.js Spatial Lab for ALL Models)
               ========================================================================= */}
           <div className="viewport-container glass-card">
             {/* Viewport Top Controls Bar */}
@@ -113,69 +112,52 @@ export default function Learning() {
               <div className="viewport-mode-indicator">
                 <span className="pulse-dot"></span>
                 <span className="indicator-text">
-                  {currentTopic.id === 'human-heart' ? 'Three.js 3D WebGL Model Viewer' : '3D Spatial Canvas'}
+                  WebGL 3D Interactive Spatial Lab
                 </span>
               </div>
 
               <div className="viewport-tools">
-                {currentTopic.id === 'human-heart' ? (
+                {activeComponent && (
                   <button 
                     className="tool-btn" 
-                    onClick={() => setActiveChamber(null)}
-                    title="View Whole Heart"
+                    onClick={() => setActiveComponent(null)}
+                    title="View Entire System"
                   >
-                    <Heart size={15} />
-                    <span>Whole Organ</span>
-                  </button>
-                ) : (
-                  <button 
-                    className="tool-btn" 
-                    onClick={handleRotatePreview} 
-                    title="Simulate 3D Rotation"
-                  >
-                    <RotateCw size={15} />
-                    <span>Rotate</span>
+                    <Target size={15} />
+                    <span>Whole System</span>
                   </button>
                 )}
                 <button 
                   className="tool-btn" 
                   onClick={() => handleActionClick('3d')}
-                  title="Model Details & Info"
+                  title="Lab Info & Capabilities"
                 >
                   <Maximize2 size={15} />
-                  <span>Inspect</span>
+                  <span>Lab Specs</span>
                 </button>
               </div>
             </div>
 
-            {/* Viewport Canvas or Live Three.js Viewer */}
-            {currentTopic.id === 'human-heart' ? (
-              <HeartModelViewer 
-                activeChamber={activeChamber} 
-                onSelectChamber={setActiveChamber} 
-              />
-            ) : (
-              <GeneralOrganViewer 
-                topicId={currentTopic.id} 
-                title={currentTopic.title} 
-              />
-            )}
+            {/* Viewport Canvas (Universal 3D Model Viewer) */}
+            <GeneralOrganViewer 
+              topicId={currentTopic.id} 
+              title={currentTopic.title}
+              activeComponent={activeComponent}
+              onSelectComponent={setActiveComponent}
+            />
 
-            {/* Viewport Action Toolbar (The 4 Requested Buttons) */}
+            {/* Viewport Action Toolbar */}
             <div className="viewport-action-bar">
               <button 
                 className="action-btn btn-view-3d" 
                 onClick={() => {
-                  if (currentTopic.id === 'human-heart') {
-                    setActiveChamber(null);
-                  } else {
-                    handleActionClick('3d');
-                  }
+                  setActiveComponent(null);
+                  handleActionClick('3d');
                 }}
-                title="View full interactive 3D model"
+                title="View 3D Visualization Lab details"
               >
                 <Box size={18} />
-                <span>View 3D Model</span>
+                <span>3D Lab Specs</span>
               </button>
 
               <button 
@@ -193,7 +175,7 @@ export default function Learning() {
                 title="Ask AI questions about this topic"
               >
                 <Bot size={18} />
-                <span>Ask AI</span>
+                <span>Ask AI Tutor</span>
               </button>
 
               <button 
@@ -213,7 +195,7 @@ export default function Learning() {
           <div className="details-panel glass-card">
             <div className="details-header">
               <h3 className="details-heading">Topic Overview</h3>
-              <span className="time-estimate">{currentTopic.estimatedTime} reading</span>
+              <span className="time-estimate">{currentTopic.estimatedTime} session</span>
             </div>
 
             <p className="topic-full-description">
@@ -226,7 +208,7 @@ export default function Learning() {
             </div>
 
             <div className="key-points-section">
-              <h4 className="key-points-title">Core Anatomical & Functional Concepts:</h4>
+              <h4 className="key-points-title">Core Conceptual Pillars:</h4>
               <div className="key-points-list">
                 {currentTopic.keyPoints.map((point, index) => (
                   <div key={index} className="key-point-card">
@@ -246,7 +228,7 @@ export default function Learning() {
             <div className="ai-prompt-preview-box">
               <div className="ai-box-header">
                 <Sparkles size={16} className="ai-box-icon" />
-                <span>Suggested AI Question:</span>
+                <span>Suggested AI Inquiry:</span>
               </div>
               <p className="ai-prompt-text">"{currentTopic.aiPromptSuggestion}"</p>
               <button 
@@ -261,98 +243,107 @@ export default function Learning() {
         </div>
 
         {/* =========================================================================
-            PHASE 2: 4 CARDIAC CHAMBERS INTERACTIVE PANELS (Human Heart)
+            COMPONENT & ARCHITECTURAL ANALYSIS SECTION (FOR ALL 15 TOPICS)
             ========================================================================= */}
-        {currentTopic.id === 'human-heart' && (
+        {componentsList.length > 0 && (
           <div className="chambers-section-container">
             <div className="chambers-section-header">
               <div className="section-title-wrap">
                 <Activity size={24} className="chambers-header-icon" />
                 <div>
-                  <h2 className="chambers-section-title">Cardiac Chambers & Blood Pathway Analysis</h2>
+                  <h2 className="chambers-section-title">
+                    {topicComponentsData.title} • Structural Components & Layer Dissection
+                  </h2>
                   <p className="chambers-section-sub">
-                    Click any chamber card or 3D pin to zoom, isolate, and inspect its internal circulatory mechanics.
+                    Click any component card or 3D viewport pin to isolate its geometry, zoom the 3D camera, and inspect scientific specifications.
                   </p>
                 </div>
               </div>
-              {activeChamber && (
+              {activeComponent && (
                 <button 
                   className="btn btn-secondary reset-inspect-btn" 
-                  onClick={() => setActiveChamber(null)}
+                  onClick={() => setActiveComponent(null)}
                 >
                   <RotateCw size={14} />
-                  <span>Show All Chambers</span>
+                  <span>Show Whole Model</span>
                 </button>
               )}
             </div>
 
-            {/* Focused Chamber Spotlight Detail Card (When Selected) */}
-            {selectedChamberData && (
+            {/* Focused Component Spotlight Card (When Selected) */}
+            {selectedComponentData && (
               <div className="focused-chamber-card glass-card">
                 <div className="focused-card-top">
                   <div className="focused-title-group">
                     <span 
                       className="focused-chamber-dot"
-                      style={{ backgroundColor: selectedChamberData.color }}
+                      style={{ backgroundColor: selectedComponentData.color }}
                     />
-                    <h3 className="focused-chamber-name">{selectedChamberData.name}</h3>
-                    <span className={`chamber-badge ${selectedChamberData.oxygenated ? 'badge-ox' : 'badge-deox'}`}>
-                      {selectedChamberData.oxygenated ? 'Oxygenated (O2-Rich)' : 'Deoxygenated (CO2-Rich)'}
+                    <h3 className="focused-chamber-name">{selectedComponentData.name}</h3>
+                    <span className="chamber-badge badge-ox" style={{ backgroundColor: `${selectedComponentData.color}25`, color: selectedComponentData.color, borderColor: `${selectedComponentData.color}40` }}>
+                      {selectedComponentData.tag}
                     </span>
                   </div>
-                  <span className="chamber-camera-status">3D Camera Locked On Target</span>
-                </div>
-
-                <p className="focused-chamber-desc">{selectedChamberData.summary}</p>
-
-                <div className="focused-specs-grid">
-                  <div className="spec-box">
-                    <span className="spec-label">Connected Vessels</span>
-                    <span className="spec-value">{selectedChamberData.vessels}</span>
-                  </div>
-                  <div className="spec-box">
-                    <span className="spec-label">Regulating Valve</span>
-                    <span className="spec-value">{selectedChamberData.valve}</span>
-                  </div>
-                  <div className="spec-box">
-                    <span className="spec-label">Circulatory Circuit</span>
-                    <span className="spec-value">
-                      {selectedChamberData.oxygenated ? 'Systemic Circulation' : 'Pulmonary Circulation'}
-                    </span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span className="chamber-camera-status">3D Camera Locked On Target</span>
+                    <button 
+                      className="btn btn-secondary"
+                      style={{ padding: '4px 10px', fontSize: '0.75rem', gap: '4px', display: 'flex', alignItems: 'center' }}
+                      onClick={() => handleAskAI(`Explain the function and significance of ${selectedComponentData.name} in ${currentTopic.title}`)}
+                    >
+                      <Bot size={14} />
+                      <span>Ask AI Tutor</span>
+                    </button>
                   </div>
                 </div>
+
+                <p className="focused-chamber-desc">{selectedComponentData.summary}</p>
+
+                {selectedComponentData.specs && (
+                  <div className="focused-specs-grid">
+                    {Object.entries(selectedComponentData.specs).map(([key, val], idx) => (
+                      <div key={idx} className="spec-box">
+                        <span className="spec-label">{key}</span>
+                        <span className="spec-value">{val}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
 
-            {/* 4 Chamber Information Cards Grid */}
+            {/* Component Cards Grid */}
             <div className="chambers-cards-grid">
-              {CHAMBER_DATA.map(chamber => {
-                const isSelected = activeChamber === chamber.id;
+              {componentsList.map(comp => {
+                const isSelected = activeComponent === comp.id;
                 return (
                   <div 
-                    key={chamber.id}
+                    key={comp.id}
                     className={`chamber-info-card glass-card ${isSelected ? 'selected' : ''}`}
-                    onClick={() => setActiveChamber(isSelected ? null : chamber.id)}
+                    onClick={() => setActiveComponent(isSelected ? null : comp.id)}
                   >
                     <div className="card-chamber-header">
                       <div className="chamber-name-row">
                         <span 
                           className="chamber-indicator-circle"
-                          style={{ backgroundColor: chamber.color }}
+                          style={{ backgroundColor: comp.color }}
                         />
-                        <h4 className="chamber-card-title">{chamber.name}</h4>
+                        <h4 className="chamber-card-title">{comp.name}</h4>
                       </div>
-                      <span className={`card-type-tag ${chamber.oxygenated ? 'tag-ox' : 'tag-deox'}`}>
-                        {chamber.oxygenated ? 'O2 Rich' : 'CO2 Rich'}
+                      <span 
+                        className="card-type-tag tag-ox"
+                        style={{ backgroundColor: `${comp.color}20`, color: comp.color }}
+                      >
+                        {comp.category}
                       </span>
                     </div>
 
-                    <p className="chamber-card-summary">{chamber.summary}</p>
+                    <p className="chamber-card-summary">{comp.summary}</p>
 
                     <div className="chamber-card-footer">
                       <div className="chamber-vessels-tag">
-                        <span className="vessel-label">Vessels:</span>
-                        <span className="vessel-name">{chamber.vessels}</span>
+                        <span className="vessel-label">Layer:</span>
+                        <span className="vessel-name">{comp.tag}</span>
                       </div>
                       <span className="inspect-3d-hint">
                         {isSelected ? 'Inspecting' : 'Click to Focus 3D'}

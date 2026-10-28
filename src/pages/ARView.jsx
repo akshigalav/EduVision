@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import { createOrgan3DModel } from '../utils/organ3DModels';
 import { CHAMBER_DATA } from '../data/heartData';
+import { MODEL_COMPONENTS_DATA } from '../data/modelComponentsData';
 import './ARView.css';
 
 /**
@@ -121,9 +122,20 @@ export default function ARView() {
   const animFrameIdRef = useRef(null);
   const fileInputRef = useRef(null);
 
-  // Active Organ Data
-  const currentOrganKey = ORGAN_SCAN_DATA[topicId] ? topicId : 'human-heart';
-  const organData = ORGAN_SCAN_DATA[currentOrganKey];
+  // Active Organ / System Scan Data
+  const topicComponents = MODEL_COMPONENTS_DATA[topicId] || MODEL_COMPONENTS_DATA['human-heart'];
+  const organData = ORGAN_SCAN_DATA[topicId] || {
+    name: topicComponents.title,
+    category: topicComponents.system,
+    confidence: '98.9%',
+    telemetry: topicComponents.telemetry || [],
+    chambers: topicComponents.components?.map(c => ({
+      name: c.name,
+      desc: c.summary,
+      color: c.color
+    })) || [],
+    aiPrompt: `Explain the scientific principles and functional architecture of ${topicComponents.title}`
+  };
 
   // AR View States
   const [cameraReady, setCameraReady] = useState(false);
@@ -168,7 +180,7 @@ export default function ARView() {
     simScene.add(cardMesh);
 
     // Ultra-Realistic 3D Organ Model
-    const organHelper = createOrgan3DModel(currentOrganKey, { scale: 0.65 });
+    const organHelper = createOrgan3DModel(topicId, { scale: 0.65 });
     organHelper.group.position.set(0, 0, 0.35);
     cardMesh.add(organHelper.group);
     organModelRef.current = organHelper;
@@ -199,7 +211,7 @@ export default function ARView() {
         container.removeChild(simRenderer.domElement);
       }
     };
-  }, [currentOrganKey, organData]);
+  }, [topicId, organData]);
 
   // -------------------------------------------------------------
   // INITIALIZE MINDAR OR SIMULATION
@@ -255,7 +267,7 @@ export default function ARView() {
         const anchor = mindarThree.addAnchor(0);
 
         // Realistic 3D Model
-        const organHelper = createOrgan3DModel(currentOrganKey, { scale: 0.75 });
+        const organHelper = createOrgan3DModel(topicId, { scale: 0.75 });
         organHelper.group.position.set(0, 0, 0.25);
         anchor.group.add(organHelper.group);
         organModelRef.current = organHelper;
@@ -320,7 +332,7 @@ export default function ARView() {
       }
       container.innerHTML = '';
     };
-  }, [simulationMode, currentOrganKey, organData, startSimulation]);
+  }, [simulationMode, topicId, organData, startSimulation]);
 
   // -------------------------------------------------------------
   // SMART PHOTO / DIAGRAM SCANNER
