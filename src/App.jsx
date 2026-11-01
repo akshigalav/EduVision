@@ -30,7 +30,7 @@ function ScrollToTop() {
  */
 export default function App() {
   return (
-    <Router basename={import.meta.env.BASE_URL}>
+    <Router>
       <ScrollToTop />
       <div className="app-layout">
         {/* Global Navigation Header */}
